@@ -1,129 +1,151 @@
-// // index.js
+// index.js
 
-// // O inicio do programa está em main.html
+// O inicio do programa está em main.html
 
-// import puppeteer from 'puppeteer';
+import puppeteer, { HTTPRequest } from 'puppeteer';
+import { unescape } from 'he';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 
-// import exceljs from 'exceljs'
-// import { format } from 'date-fns';
+import exceljs from 'exceljs'
+import { format } from 'date-fns';
+import { AudienciaSimplificada, PautaAudienciaResponse } from './audiencias';
+import { dateSelected } from './generalTypes';
+import PCR from "puppeteer-chromium-resolver";
 
-// export default async function MainBost(uploadedFilePath: string) {
+export default async function MainBost(dateSelectedTest: dateSelected) {
+
+  
+
+    async function timeoutDelay(seconds: number) {
+        setTimeout(async () => {
+
+            return true
+        }, seconds * 1000)
+
+        return true
+    }
+
+    async function acceptCookies(page) {
+        const acceptCookieButton = '#onetrust-reject-all-handler';
+        await page.waitForSelector(acceptCookieButton);
+        await page.click(acceptCookieButton);
+        await timeoutDelay(3);
+    }
+
+    async function searchInput(page, inputText) {
+        const inputSearch = 'input#txtBusca';
+        await page.waitForSelector(inputSearch);
+        await page.type(inputSearch, inputText);
+        await timeoutDelay(2);
+    }
+
+    async function closeBrowser(browser) {
+        try {
+            await browser.close();
+        } catch (error) {
+        }
+    }
+
+    async function getExcelNCMs(worksheet: exceljs.Worksheet) {
+
+        // LER OS NCMS DA PLANILHA E RETORNAR NO ARRAY
+        const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
+
+        worksheet.eachRow(function (row, rowNumber) {
+
+            if (rowNumber > 1) {
+                jsonNCMs.push(JSON.stringify(row.values[1]))
+
+            }
+        });
+
+        // Retornar o JSON
+        return jsonNCMs;
+    }
+    async function writeData(worksheet: exceljs.Worksheet, workbook: exceljs.Workbook, excelData: AudienciaSimplificada[]) {
+
+        const homeDir = require('os').homedir()
+        const desktopDir = `${homeDir}/Desktop`
+        // Definindo os cabeçalhos das colunas
+        worksheet.columns = [
+            { header: 'Número do Processo', key: 'numeroProcesso', width: 25 },
+            { header: 'Tipo de Audiência', key: 'tipoAudiencia', width: 30 },
+            { header: 'Órgão Julgador', key: 'orgaoJulgador', width: 50 }
+        ];
+
+        // Preenchendo as células com os dados
+        excelData.forEach((audiencia, index) => {
+            worksheet.getRow(index + 2).values = [
+                audiencia.numeroProcesso,
+                audiencia.tipoAudiencia,
+                audiencia.orgaoJulgador
+            ];
+        });
+
+        // Salvando o arquivo Excel (adaptando o caminho do arquivo)
+        const formattedDate = format(new Date(), 'dd-MM-yyyy-HH-mm-ss');
+        await workbook.xlsx.writeFile(`${desktopDir}/audiencias-${formattedDate}.xlsx`);
+
+    }
+
+    async function startPuppeteer(headless: boolean) {
+        const options = {};
+        const stats = await PCR(options);
+
+        const browser = await stats.puppeteer.launch({
+            headless: headless,
+            args: ["--no-sandbox"],
+            executablePath: stats.executablePath
+        }).catch(function (error) {
+        });
+
+        const page = await browser.newPage();
+        await page.setViewport({
+            width: 1280,
+            height: 720,
+        });
+
+        return page
+    }
 
 
-//     const filePath = uploadedFilePath
+    const workbook = new exceljs.Workbook();
+    const worksheet = workbook.addWorksheet('Dados da Audiência')
 
-//     async function timeoutDelay(seconds: number) {
-//         setTimeout(async () => {
-//         }, seconds * 1000)
-//     }
 
-//     async function acceptCookies(page) {
-//         const acceptCookieButton = '#onetrust-reject-all-handler';
-//         await page.waitForSelector(acceptCookieButton);
-//         await page.click(acceptCookieButton);
-//         await timeoutDelay(3);
-//     }
+    const page = await startPuppeteer(false)
 
-//     async function searchInput(page, inputText) {
-//         const inputSearch = 'input#txtBusca';
-//         await page.waitForSelector(inputSearch);
-//         await page.type(inputSearch, inputText);
-//         await timeoutDelay(2);
-//     }
+    await page.goto('https://pje.trt1.jus.br/primeirograu/login.seam');
+    // await page.waitForNavigation({timeout:2000})
 
-//     async function closeBrowser(browser) {
-//         try {
-//             await browser.close();
-//         } catch (error) {
-//             console.error('Error closing browser:', error);
-//         }
-//     }
+    await page.waitForSelector('#btnEntrar', { visible: true })
 
-//     async function getExcelNCMs(worksheet: exceljs.Worksheet) {
+    await page.type('#username', '15992496858');
+    await page.type('#password', 'Bqq188332@');
 
-//         // LER OS NCMS DA PLANILHA E RETORNAR NO ARRAY
-//         const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
 
-//         worksheet.eachRow(function (row, rowNumber) {
+    await page.click('#btnEntrar')
 
-//             if (rowNumber > 1) {
-//                 jsonNCMs.push(JSON.stringify(row.values[1]))
+    await page.waitForNavigation({ waitUntil: 'networkidle2' })
 
-//             }
-//         });
+    await page.goto(`https://pje.trt1.jus.br/pje-comum-api/api/pauta-usuarios-externos?dataFim=${dateSelectedTest.final.year}-${dateSelectedTest.final.month}-${dateSelectedTest.final.day}&dataInicio=${dateSelectedTest.initial.year}-${dateSelectedTest.initial.month}-${dateSelectedTest.initial.day}&codigoSituacao=M&numeroPagina=1&tamanhoPagina=15&ordenacao=asc`);
 
-//         // Retornar o JSON
-//         return jsonNCMs;
-//     }
-//     async function writeData(worksheet: exceljs.Worksheet, workbook: exceljs.Workbook, iobData: string[]) {
+    await page.waitForSelector('pre');
 
-//         // SALVANDO DADOS IOB NA PLANILHA NA COLUNA B
+    const html = await page.$eval('pre', el => el.textContent);
 
-//         iobData.forEach((element, index) => {
-//             worksheet.getCell(`B${index + 2}`).value = element
-//         })
+    const json = JSON.parse(html);
 
-//         const formattedDate = format(new Date(), 'dd-MM-yyyy-HH-mm-ss');
+    const excelData: AudienciaSimplificada[] = []; // Inicializando um array vazio
 
-//         await workbook.xlsx.writeFile(`renderer/public/data/ncm-${formattedDate}.xlsx`);
+    json.resultado.forEach(audit => {
+        excelData.push({
+            numeroProcesso: audit.processo.numero,
+            tipoAudiencia: unescape(audit.tipo.descricao),
+            orgaoJulgador: unescape(audit.processo.orgaoJulgador.descricao)
+        });
+    });
 
-//         return
-//     }
+    await writeData(worksheet, workbook, excelData)
 
-//     const workbook = new exceljs.Workbook();
-//     await workbook.xlsx.readFile(filePath);
-
-//     // // Acessar a primeira planilha
-//     // const worksheet = workbook.worksheets[0];
-
-//     // const jsonNCMs = await getExcelNCMs(worksheet)
-
-//     // console.log('jsonNCMs')
-//     // console.log(jsonNCMs)
-
-//     // await writeData(worksheet, workbook, ['a', 'b', 'c'])
-
-//     const browser = await puppeteer.launch({ headless: false });
-//     const page = await browser.newPage();
-
-//     await page.goto('https://www.iobonline.com.br/index/login');
-
-//     // await acceptCookies(page);
-
-//     // await page.waitForSelector('input#txtLogin');
-//     console.log('before timeout')
-//     await page.type('input#txtLogin', 'iob.6543750');
-//     await page.type('input#txtPassword', '98721894');
-//     setTimeout(async () => {
-//         await page.keyboard.press('Enter')
-//     },2000)
-//     // await timeoutDelay(5)
-//     // console.log('after 1 enter')
-//     // // await page.click('button.default-btn.light-green-btn');
-//     // console.log('after 1 tab')
-//     // await timeoutDelay(1)
-//     // await page.keyboard.press('Enter')
-//     // console.log('after 2 enter')
-//     // // await page.keyboard.press('Enter')
-//     // // await page.click('button.default-btn.light-green-btn.send-login');
-//     // console.log('inputado')
-
-//     // await page.waitForSelector('button.default-btn.light-green-btn.send-login');
-//     // await timeoutDelay(3);
-//     // await timeoutDelay(3)
-
-//     // try {
-//     //     await page.waitForSelector('span.default-btn.light-green-btn');
-//     //     await page.click('span.default-btn.light-green-btn');
-//     // } catch (error) { }
-
-//     // await timeoutDelay(5);
-//     // await searchInput(page, jsonNCMs[0]);
-
-//     // await page.type('select.choice', 'SP');
-//     // await page.click('button.button.bg-primary.font-button');
-
-//     // await timeoutDelay(15);
-
-//     // await closeBrowser(browser);
-// }
+}

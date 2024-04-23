@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
+import { dateSelected } from './helpers/generalTypes'
 
 const handler = {
   send(channel: string, value: unknown) {
@@ -14,7 +15,9 @@ const handler = {
     }
   },
 
-  sendMessage: (message: string) => ipcRenderer.send('send-message', message)
+  sendMessage: (message: string) => ipcRenderer.send('send-message', message),
+  dateSelected: (date: dateSelected) => ipcRenderer.send('date-selected', date),
+  saveFile: () => ipcRenderer.invoke('dialog:saveFile')
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

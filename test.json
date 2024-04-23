@@ -1,0 +1,140 @@
+{
+    "pagina": 1,
+    "tamanhoPagina": 2,
+    "qtdPaginas": 0,
+    "totalRegistros": 2,
+    "resultado": [
+        {
+            "id": 4234285,
+            "dataInicio": "2024-04-18T11:00:00",
+            "dataFim": "2024-04-18T11:20:00",
+            "salaAudiencia": {
+                "nome": "VT01NIT"
+            },
+            "status": "M",
+            "processo": {
+                "id": 2951202,
+                "numero": "0100535-35.2023.5.01.0241",
+                "classeJudicial": {
+                    "id": 535,
+                    "codigo": "985",
+                    "descricao": "Ação Trabalhista - Rito Ordinário",
+                    "sigla": "ATOrd",
+                    "requerProcessoReferenciaCodigo": "NE",
+                    "controlaValorCausa": true,
+                    "podeIncluirAutoridade": false,
+                    "pisoValorCausa": 56480.01,
+                    "ativo": true,
+                    "idClasseJudicialPai": 593,
+                    "possuiFilhos": false
+                },
+                "segredoDeJustica": false,
+                "juizoDigital": false,
+                "orgaoJulgador": {
+                    "id": 146,
+                    "descricao": "1ª Vara do Trabalho de Niterói",
+                    "cejusc": false,
+                    "ativo": false,
+                    "postoAvancado": false,
+                    "novoOrgaoJulgador": false,
+                    "codigoServentiaCnj": 0
+                }
+            },
+            "tipo": {
+                "id": 6,
+                "descricao": "Instrução",
+                "codigo": "22",
+                "isVirtual": false
+            },
+            "designada": false,
+            "emAndamento": false,
+            "poloAtivo": {
+                "nome": "WILSON JORGE ROCHA ESTANISLAU",
+                "polo": "ativo",
+                "poloEnum": "ATIVO",
+                "representaVarios": false
+            },
+            "poloPassivo": {
+                "nome": "UBER DO BRASIL TECNOLOGIA LTDA.",
+                "polo": "passivo",
+                "poloEnum": "PASSIVO",
+                "representaVarios": false
+            },
+            "pautaAudienciaHorario": {
+                "id": 4234285,
+                "horaInicial": "11:00:00",
+                "horaFinal": "11:20:00"
+            },
+            "statusDescricao": "Designada",
+            "idProcesso": 2951202,
+            "nrProcesso": "0100535-35.2023.5.01.0241"
+        },
+        {
+            "id": 4334512,
+            "dataInicio": "2024-04-18T14:06:00",
+            "dataFim": "2024-04-18T14:07:00",
+            "salaAudiencia": {
+                "nome": "Sala Principal"
+            },
+            "status": "M",
+            "processo": {
+                "id": 3048713,
+                "numero": "0101455-65.2023.5.01.0481",
+                "classeJudicial": {
+                    "id": 608,
+                    "codigo": "1125",
+                    "descricao": "Ação Trabalhista - Rito Sumaríssimo",
+                    "sigla": "ATSum",
+                    "requerProcessoReferenciaCodigo": "NE",
+                    "controlaValorCausa": true,
+                    "podeIncluirAutoridade": false,
+                    "pisoValorCausa": 2824.01,
+                    "tetoValorCausa": 56480,
+                    "ativo": true,
+                    "idClasseJudicialPai": 593,
+                    "possuiFilhos": false
+                },
+                "segredoDeJustica": false,
+                "juizoDigital": true,
+                "orgaoJulgador": {
+                    "id": 190,
+                    "descricao": "1ª Vara do Trabalho de Macaé",
+                    "cejusc": false,
+                    "ativo": false,
+                    "postoAvancado": false,
+                    "novoOrgaoJulgador": false,
+                    "codigoServentiaCnj": 0
+                }
+            },
+            "tipo": {
+                "id": 27,
+                "descricao": "Inicial por videoconferência (rito sumaríssimo)",
+                "codigo": "7700",
+                "isVirtual": false
+            },
+            "designada": false,
+            "urlAudienciaVirtual": "https://trt1-jus-br.zoom.us/my/vt01mac?pwd=01",
+            "emAndamento": false,
+            "poloAtivo": {
+                "nome": "ERACTON EVANGELISTA DE JESUS",
+                "polo": "ativo",
+                "poloEnum": "ATIVO",
+                "representaVarios": false
+            },
+            "poloPassivo": {
+                "nome": "UBER DO BRASIL TECNOLOGIA LTDA.",
+                "polo": "passivo",
+                "poloEnum": "PASSIVO",
+                "representaVarios": false
+            },
+            "pautaAudienciaHorario": {
+                "id": 4334512,
+                "horaInicial": "14:06:00",
+                "horaFinal": "14:07:00"
+            },
+            "statusDescricao": "Designada",
+            "idProcesso": 3048713,
+            "nrProcesso": "0101455-65.2023.5.01.0481"
+        }
+    ]
+}
