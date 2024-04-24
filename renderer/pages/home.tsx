@@ -1,7 +1,7 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import Head from 'next/head'
 import Image from 'next/image'
-import { Button, Link as ChakraLink, Flex, FormControl, FormLabel, Input, VStack } from '@chakra-ui/react'
+import { Button, Link as ChakraLink, Flex, FormControl, FormLabel, Input, Spinner, VStack } from '@chakra-ui/react'
 
 import { Container } from '../components/Container'
 import { DarkModeSwitch } from '../components/DarkModeSwitch'
@@ -11,11 +11,18 @@ import { Hero } from '../components/Hero'
 
 export default function HomePage() {
 
-  const [file, setFile] = useState(null);
+  useEffect(() => {
+    window.ipc.isLoading(async (value) => {
+      setLoading(value)
+      setFile(false)
+    })
+  }, [])
+
+  const [file, setFile] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [initialDate, setInitialDate] = useState('')
-  const [finalDate, setFinalDate] = useState('')
-
+  const [finalDate, setFinalDate] = useState('');
 
   async function handleSubmit() {
 
@@ -41,15 +48,13 @@ export default function HomePage() {
       }
     }
 
-    console.log('date')
-    console.log(date)
     window.ipc.dateSelected(date)
   }
-  async function handleSubmit2() {
-    const filePath = await window.ipc.saveFile()
-    console.log('filePath')
-    console.log(filePath)
+  async function saveFilePath() {
+    await window.ipc.saveFile()
   }
+
+
 
 
   return (
@@ -81,102 +86,141 @@ export default function HomePage() {
 
           <VStack
             h='100vh'
-            pt={40}
             pb={8}
           >
+            <Flex
+              maxW={'300px'}
+              maxH={'300px'}
+              mt={12}
+            >
 
-            <Image
-              alt="Logo icon"
-              src={'/images/logos/boTRT-logo-2.png'}
-              width={'300px'}
-              height={'500px'}
-            />
+              <Image
+                alt="Logo icon"
+                src={'/images/logos/boTRT-logo-2.png'}
+                width={'300px'}
+                height={'300px'}
+              />
+            </Flex>
+            {
+              loading ?
+                <Spinner
+                  my='auto'
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                />
+                :
+                <Footer >
 
-            <Footer >
-
-              <Flex
-                flexDir={'column'}
-              >
-
-                {/* FILE INPUT */}
-                <Flex
-                  p={4}
-                >
-                  <FormControl
-                    isRequired={true}
+                  <Flex
+                    flexDir={'column'}
+                    gap={8}
                   >
-                    <FormLabel
-                      fontSize={'0.875rem'}
-                      fontWeight={'700'}
-                      letterSpacing={'5%'}
-                      color={'white'}
-                    >
-                      Selecione a data inicial desejada clicando no <b>calendário</b>:
-                    </FormLabel>
-                    <Input
-                      id='#initial-date'
-                      type='datetime-local'
-                      p={2}
-                      color={'black'}
-                      bg={'white'}
-                      _hover={{ bg: 'purple.600', color: 'white' }}
-                      onChange={(event) => { setInitialDate(event.target.value) }}
-                    />
-                  </FormControl>
-                </Flex>
-                <Flex
-                  p={4}
-                >
-                  <FormControl
-                    isRequired={true}
-                  >
-                    <FormLabel
-                      fontSize={'0.875rem'}
-                      fontWeight={'700'}
-                      letterSpacing={'5%'}
-                      color={'white'}
-                    >
-                      Selecione a data final desejada clicando no <b>calendário</b>:
-                    </FormLabel>
-                    <Input
-                      id='#final-date'
-                      type='datetime-local'
-                      p={2}
-                      color={'black'}
-                      bg={'white'}
-                      _hover={{ bg: 'purple.600', color: 'white' }}
-                      onChange={(event) => { setFinalDate(event.target.value) }}
-                    />
-                  </FormControl>
-                </Flex>
 
-                <Button
-                  variant="solid"
-                  type='submit'
-                  onClick={handleSubmit}
-                  color='white'
-                  bgGradient='linear(to-br, #FF5F5E, #FF5F5Ecc)'
-                  rounded="button"
-                  width="full"
-                  _hover={{ color: 'gray.200', p: '6', transition: '500ms', textDecor: 'none' }}
-                >
-                  Clique para iniciar
-                </Button>
-                <Button
-                  variant="solid"
-                  type='submit'
-                  onClick={handleSubmit2}
-                  color='white'
-                  bgGradient='linear(to-br, #FF5F5E, #FF5F5Ecc)'
-                  rounded="button"
-                  width="full"
-                  _hover={{ color: 'gray.200', p: '6', transition: '500ms', textDecor: 'none' }}
-                >
-                  Clique para testar
-                </Button>
+                    {/* FILE INPUT */}
+                    <Flex
+                    >
+                      <FormControl
+                        isRequired={true}
+                      >
+                        <FormLabel
+                          fontSize={'0.875rem'}
+                          fontWeight={'700'}
+                          letterSpacing={'5%'}
+                          color={'white'}
+                        >
+                          Selecione a data inicial desejada clicando no <b>calendário</b>:
+                        </FormLabel>
+                        <Input
+                          id='#initial-date'
+                          type='datetime-local'
+                          p={2}
+                          color={'black'}
+                          bg={'white'}
+                          _hover={{ bg: 'purple.600', color: 'white' }}
+                          onChange={(event) => { setInitialDate(event.target.value) }}
+                        />
+                      </FormControl>
+                    </Flex>
+                    <Flex
+                    >
+                      <FormControl
+                        isRequired={true}
+                      >
+                        <FormLabel
+                          fontSize={'0.875rem'}
+                          fontWeight={'700'}
+                          letterSpacing={'5%'}
+                          color={'white'}
+                        >
+                          Selecione a data final desejada clicando no <b>calendário</b>:
+                        </FormLabel>
+                        <Input
+                          id='#final-date'
+                          type='datetime-local'
+                          p={2}
+                          color={'black'}
+                          bg={'white'}
+                          _hover={{ bg: 'purple.600', color: 'white' }}
+                          onChange={(event) => { setFinalDate(event.target.value) }}
+                        />
+                      </FormControl>
+                    </Flex>
+                    <Flex
+                      flexDir={'column'}
+                    >
+                      <Button
+                        mx='auto'
+                        variant="solid"
+                        type='submit'
+                        onClick={handleSubmit}
+                        color='white'
+                        bgGradient='linear(to-br, #FF5F5E, #FF5F5Ecc)'
+                        rounded="button"
+                        width={'100%'}
+                        _hover={{ color: 'gray.200', transition: '500ms', textDecor: 'none' }}
+                      >
+                        Clique para iniciar
+                      </Button>
 
-              </Flex>
-            </Footer>
+                      <Button
+                        mt={4}
+                        mx='auto'
+                        variant="solid"
+                        type='submit'
+                        onClick={
+                          file ?
+                            () => { '' }
+                            :
+                            () => saveFilePath()
+                        }
+                        color='white'
+                        bgGradient={
+                          file ?
+                            'linear(to-br, #292f36, #292f36cc)'
+                            :
+                            'linear(to-br, #FF5F5E, #FF5F5Ecc)'
+                        }
+                        rounded="button"
+                        width={'100%'}
+                        cursor={
+                          file ?
+                            'default'
+                            :
+                            'pointer'
+                        }
+                        _hover={{ color: 'gray.200', transition: '500ms', textDecor: 'none' }}
+                      >
+                        Salvar
+                      </Button>
+                    </Flex>
+
+                  </Flex>
+                </Footer>
+            }
+
 
           </VStack>
 

@@ -16,8 +16,16 @@ const handler = {
   },
 
   sendMessage: (message: string) => ipcRenderer.send('send-message', message),
+  
   dateSelected: (date: dateSelected) => ipcRenderer.send('date-selected', date),
-  saveFile: () => ipcRenderer.invoke('dialog:saveFile')
+  
+  saveFile: () => ipcRenderer.invoke('dialog:saveFile'),
+  
+  callFront: (callback) => ipcRenderer.on('call-front', (_event, value) => callback(value)),
+  
+  isLoading: (callback) => ipcRenderer.on('is-loading', (_event, value) => callback(value))
+
+
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

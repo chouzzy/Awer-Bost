@@ -43,12 +43,11 @@ if (isProd) {
 
     try {
 
-      ipcMain.handle('dialog:saveFile', handleFileOpen)
-
       ipcMain.on('date-selected', async (event, date: dateSelected) => {
         console.log('Data recebida do processo renderizador:', date);
-        await MainBost(date)
-
+        mainWindow.webContents.send('is-loading', true)
+        await MainBost(date, mainWindow)
+  
       });
       // ... continue com o código que utiliza o navegador ...
     } catch (error) {
@@ -65,13 +64,13 @@ if (isProd) {
     console.log('Modo de desenvolvimento: ativado.')
     const port = process.argv[2]
     await mainWindow.loadURL(`http://localhost:${port}/home`)
-    mainWindow.webContents.openDevTools()
+    // mainWindow.webContents.openDevTools()
 
-    ipcMain.handle('dialog:saveFile', handleFileOpen)
 
     ipcMain.on('date-selected', async (event, date: dateSelected) => {
       console.log('Data recebida do processo renderizador:', date);
-      await MainBost(date)
+      mainWindow.webContents.send('is-loading', true)
+      await MainBost(date, mainWindow)
 
     });
   }
@@ -85,11 +84,6 @@ ipcMain.on('message', async (event, arg) => {
   event.reply('message', `${arg} World!`)
 })
 
-async function handleFileOpen() {
-  const { canceled, filePaths } = await dialog.showOpenDialog({})
-  if (!canceled) {
-    return filePaths[0]
-  }
-}
+
 
 

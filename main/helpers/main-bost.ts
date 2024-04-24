@@ -12,9 +12,7 @@ import { AudienciaSimplificada, PautaAudienciaResponse } from './audiencias';
 import { dateSelected } from './generalTypes';
 import PCR from "puppeteer-chromium-resolver";
 
-export default async function MainBost(dateSelectedTest: dateSelected) {
-
-  
+export default async function MainBost(dateSelectedTest: dateSelected, mainWindow: Electron.CrossProcessExports.BrowserWindow) {
 
     async function timeoutDelay(seconds: number) {
         setTimeout(async () => {
@@ -62,7 +60,13 @@ export default async function MainBost(dateSelectedTest: dateSelected) {
         // Retornar o JSON
         return jsonNCMs;
     }
-    async function writeData(worksheet: exceljs.Worksheet, workbook: exceljs.Workbook, excelData: AudienciaSimplificada[]) {
+    async function writeData(
+        worksheet: exceljs.Worksheet,
+        workbook: exceljs.Workbook,
+        excelData: AudienciaSimplificada[],
+        filePath
+    ) {
+
 
         const homeDir = require('os').homedir()
         const desktopDir = `${homeDir}/Desktop`
@@ -84,7 +88,8 @@ export default async function MainBost(dateSelectedTest: dateSelected) {
 
         // Salvando o arquivo Excel (adaptando o caminho do arquivo)
         const formattedDate = format(new Date(), 'dd-MM-yyyy-HH-mm-ss');
-        await workbook.xlsx.writeFile(`${desktopDir}/audiencias-${formattedDate}.xlsx`);
+        // await workbook.xlsx.writeFile(`${desktopDir}/audiencias-${formattedDate}.xlsx`);
+        await workbook.xlsx.writeFile(`${filePath}/audiencias-${formattedDate}.xlsx`);
 
     }
 
@@ -146,6 +151,20 @@ export default async function MainBost(dateSelectedTest: dateSelected) {
         });
     });
 
-    await writeData(worksheet, workbook, excelData)
+    mainWindow.webContents.send('is-loading', false)
+
+    ipcMain.handle('dialog:saveFile', async () => {
+
+        const { canceled, filePaths } = await dialog.showOpenDialog({
+            properties: ['openDirectory']
+        })
+
+        if (!canceled) {
+            await writeData(worksheet, workbook, excelData, filePaths)
+        }
+
+    })
+
+
 
 }
