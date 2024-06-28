@@ -9,6 +9,7 @@ import goToGoogle from './helpers/go-to-google';
 // import MainBost from './helpers/main-bost';
 import MainBost2 from './helpers/main-bost-2';
 import exceljs from 'exceljs'
+import MainBost from './helpers/main-bost';
 
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -33,68 +34,68 @@ if (isProd) {
   const options = {};
   const stats = await PCR(options);
 
-  
 
-  await mainWindow.loadURL('app://./home')
-  const workbook = new exceljs.Workbook();
-  const homeDir = require('os').homedir()
-  const desktopDir = `${homeDir}/Desktop`
+  // PRODUÇÃO
+  if (isProd) {
 
-  try {
-
-
-    const browser = await stats.puppeteer.launch({
-      headless: false,
-      args: ["--no-sandbox"],
-      executablePath: stats.executablePath
-    }).catch(function (error) {
-      console.log(error);
-    });
-
-    const page = await browser.newPage();
-
-    await page.goto('https://www.iobonline.com.br/index/login');
-    // ... continue com o código que utiliza o navegador ...
-  } catch (error) {
-    // Escreve o erro na célula A1 da planilha "teste.xlsx"
+    await mainWindow.loadURL('app://./home')
     const workbook = new exceljs.Workbook();
-    const worksheet = workbook.addWorksheet('Planilha1');
-    worksheet.getCell('A1').value = error.message;
-    await workbook.xlsx.writeFile(`${desktopDir}/testeCatch2.xlsx`);
+    const homeDir = require('os').homedir()
+    const desktopDir = `${homeDir}/Desktop`
 
-    // Opcional: Exibe o erro no console para análise
-    console.error(error);
+
+    try {
+      const browser = await stats.puppeteer.launch({
+        headless: false,
+        args: ["--no-sandbox"],
+        executablePath: stats.executablePath
+      }).catch(function (error) {
+        console.log(error);
+      });
+
+      const page = await browser.newPage();
+
+      await page.goto('https://www.iobonline.com.br/index/login');
+      // ... continue com o código que utiliza o navegador ...
+    } catch (error) {
+      // Escreve o erro na célula A1 da planilha "teste.xlsx"
+      const workbook = new exceljs.Workbook();
+      const worksheet = workbook.addWorksheet('Planilha1');
+      worksheet.getCell('A1').value = error.message;
+      await workbook.xlsx.writeFile(`${desktopDir}/testeCatch2.xlsx`);
+
+      // Opcional: Exibe o erro no console para análise
+      console.error(error);
+
+      await workbook.xlsx.writeFile(`${desktopDir}/testeSuccess2.xlsx`);
+    }
+
+
+
+    setTimeout(() => {
+
+      app.quit()
+    }, 10000)
+
+    // DESENVOLVIMENTO
+  } 
+  // DSESENVOLVIMENTO
+  else {
+
+    console.log('Modo de desenvolvimento: ativado.')
+    const port = process.argv[2]
+    await mainWindow.loadURL(`http://localhost:${port}/home`)
+    mainWindow.webContents.openDevTools()
+    ipcMain.on('send-message', async (event, message) => {
+      console.log(message)
+
+      await MainBost(message)
+    })
+
+
+   
+
   }
-
-  await workbook.xlsx.writeFile(`${desktopDir}/testeSuccess2.xlsx`);
-
-
-
-  setTimeout(() => {
-
-    app.quit()
-  }, 10000)
-
-
-
-  // if (isProd) {
-  //   await mainWindow.loadURL('app://./home')
-
-  //   ipcMain.on('send-message', async (event, message) => {
-  //     console.log(message)
-
-  //     // await openApp()
-  //     // await MainBost(message)
-  //     await MainBost2(message)
-  //   })
-
-
-  // } else {
-  //   const port = process.argv[2]
-  //   await mainWindow.loadURL(`http://localhost:${port}/home`)
-  //   mainWindow.webContents.openDevTools()
-
-  // }
 })()
 
 app.on('window-all-closed', () => {

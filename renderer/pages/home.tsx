@@ -17,19 +17,16 @@ export default function HomePage() {
   };
 
   async function handleClick(message: string) {
-    alert('Handle Click ow')
-    window.ipc.sendMessage(message)
-    // if (file) {
-    //   const formData = new FormData();
-    //   console.log('file')
-    //   console.log(file)
-    //   if (typeof(file.path) == 'string') {
-    //     window.ipc.sendMessage(file.path)
-    //   }
 
-    // } else {
-    //   console.log('erro de input')
-    // }
+    if (file) {
+    
+      if (typeof(file.path) == 'string') {
+        window.ipc.sendMessage(file.path)
+      }
+
+    } else {
+      return alert("Erro: Insira uma planilha")
+    }
     
   }
 
@@ -37,7 +34,7 @@ export default function HomePage() {
   return (
     <React.Fragment>
       <Head>
-        <title>BOST ⚡</title>
+        <title>BO⚡T </title>
       </Head>
       <Container
         minHeight="100vh"
@@ -100,7 +97,7 @@ export default function HomePage() {
 
                 <Button
                   variant="solid"
-                  onClick={() => handleClick('click')}
+                  onClick={() => handleClick(file)}
                   color='white'
                   bgGradient='linear(to-br, #FF5F5E, #FF5F5Ecc)'
                   rounded="button"
