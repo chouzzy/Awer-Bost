@@ -6,6 +6,15 @@ import puppeteer, { Page } from 'puppeteer';
 import exceljs from 'exceljs'
 import { format } from 'date-fns';
 import { ScrapedMVAs } from './bostTypes';
+import { obterValorEstado } from './findStateValue';
+
+interface NCMData {
+    ncmNumber: string;
+    estadoOrigem: string;
+    estadoDestino: string;
+  }
+  
+  
 
 export default async function MainBost(uploadedFilePath: string) {
 
@@ -16,19 +25,34 @@ export default async function MainBost(uploadedFilePath: string) {
         const workbook = new exceljs.Workbook();
         await workbook.xlsx.readFile(filePath);
 
-        // Acessar a primeira planilha
+        // Acessar a primeira aba da planilha
         const worksheet = workbook.worksheets[0];
 
         // LER OS NCMS DA PLANILHA E RETORNAR NO ARRAY
-        const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
+        const jsonNCMs: NCMData[] = [];
 
+        // const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
+        
         worksheet.eachRow(function (row, rowNumber) {
 
             if (rowNumber > 1) {
-                jsonNCMs.push(JSON.stringify(row.values[1]))
+
+                
+                let origem = String( obterValorEstado((JSON.stringify(row.values[2])).replace(/"/g, '')))
+                let destino = String( obterValorEstado((JSON.stringify(row.values[3])).replace(/"/g, '')))
+
+
+
+                jsonNCMs.push({
+
+                    ncmNumber:(JSON.stringify(row.values[1])).replace(/"/g, ''),
+                    estadoOrigem:origem,
+                    estadoDestino:destino
+                })
 
             }
         });
+
 
         // Retornar o JSON
         return { jsonNCMs, worksheet, workbook };
@@ -50,7 +74,7 @@ export default async function MainBost(uploadedFilePath: string) {
 
     async function openBrowser() {
 
-        const browser = await puppeteer.launch({ headless: false });
+        const browser = await puppeteer.launch({ headless: true });
 
         const page = await browser.newPage();
         await page.setViewport({
@@ -134,12 +158,16 @@ export default async function MainBost(uploadedFilePath: string) {
         return uniqueButtonSelectors
     }
 
-    async function simulateNCM(page: Page, ncm) {
+    async function simulateNCM(page: Page, ncm:NCMData) {
 
+        const {ncmNumber, estadoOrigem, estadoDestino} = ncm
         // QUERY PRINCIPAL
-        await page.goto(`https://www.iobsimuladortributario.com.br/pages/coreonline/integracao/modulos.jsf?codProduto=IST&siglaModulo=ICMSSTHOME&tipo=1&codigo=${ncm}&origem=27&destino=27`)
+
+        await page.goto(`https://www.iobsimuladortributario.com.br/pages/coreonline/integracao/modulos.jsf?codProduto=IST&siglaModulo=ICMSSTHOME&tipo=1&codigo=${ncmNumber}&origem=${estadoOrigem}&destino=${estadoDestino}`)
 
         await navTimeout(page, 2000)
+
+ 
 
         return
 
@@ -166,8 +194,6 @@ export default async function MainBost(uploadedFilePath: string) {
                 const mvaElement = await page.waitForSelector(`#bla > fieldset > div > table > tbody > tr.blockMVA > td.resultMVA.mvaVigente`, { timeout: 3000 });
 
                 const mvaValue = await mvaElement.evaluate(element => element.textContent);
-                console.log('mvaValue')
-                console.log(mvaValue)
 
                 const mvaDescElement = await page.waitForSelector(`#bla > fieldset > div > table > tbody > tr:nth-child(1) > td > span.produtoTipo`, { timeout: 3000 });
                 const mvaDesc = await mvaDescElement.evaluate(element => element.textContent);
@@ -185,9 +211,6 @@ export default async function MainBost(uploadedFilePath: string) {
 
                     const mvaElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr.blockMVA > td.resultMVA.mvaVigente`, { timeout: 3000 });
                     const mvaValue = await mvaElement.evaluate(element => element.textContent);
-                    console.log('mvaValue')
-                    console.log(mvaValue)
-
                     const mvaDescElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr:nth-child(1) > td > span.produtoTipo`, { timeout: 3000 });
                     const mvaDesc = await mvaDescElement.evaluate(element => element.textContent);
 
@@ -211,16 +234,16 @@ export default async function MainBost(uploadedFilePath: string) {
         }
     }
 
-    async function scrapeMVA(ncm: string) {
+    async function scrapeMVA(ncm: NCMData) {
 
         try {
-            // FORMATANDO NCM
-            ncm = ncm.replace(/"/g, '')
 
             // SIMULA NCM NA QUERY
             await simulateNCM(page, ncm)
 
             let mvaList: string[] = []
+
+            const {ncmNumber, estadoOrigem, estadoDestino} = ncm
 
             try {
 
@@ -236,7 +259,7 @@ export default async function MainBost(uploadedFilePath: string) {
                     await page.click(buttonSelector);
 
                     try {
-                        const mvaDict = await getMVA(page, ncm)
+                        const mvaDict = await getMVA(page, ncmNumber)
                         mvaList.push(...mvaDict)
 
                     } catch (error) {
@@ -252,7 +275,7 @@ export default async function MainBost(uploadedFilePath: string) {
             } catch (error) {
 
                 try {
-                    const mvaDict = await getMVA(page, ncm)
+                    const mvaDict = await getMVA(page, ncmNumber)
                     mvaList.push(...mvaDict)
 
 
@@ -292,9 +315,9 @@ export default async function MainBost(uploadedFilePath: string) {
     // SCRAPING CADA NCM DA LISTA DO EXCEL
     for (const ncm of jsonNCMs) {
 
-        console.log(`Scraping ncm: ${ncm}`)
+        console.log(`Scraping ncm: ${ncm.ncmNumber}`)
 
-        let scrapedMVAs = await scrapeMVA(String(ncm))
+        let scrapedMVAs = await scrapeMVA(ncm)
 
         MVAs.push(...scrapedMVAs)
 
@@ -303,7 +326,7 @@ export default async function MainBost(uploadedFilePath: string) {
 
     // PREPARANDO OS MVAS E DESCRIÇÕES PARA O EXCEL
     MVAs.forEach((element, index) => {
-        worksheet.getCell(`B${index + 2}`).value = `${element}`
+        worksheet.getCell(`D${index + 2}`).value = `${element}`
     })
 
     // FORMATANDO O NOME DO ARQUIVO
@@ -311,6 +334,8 @@ export default async function MainBost(uploadedFilePath: string) {
 
     // SALVANDO ARQUIVO
     await workbook.xlsx.writeFile(`renderer/public/data/ncm-${formattedDate}.xlsx`);
+
+    console.log("Programa finalizado.")
 
     return
 
@@ -340,7 +365,6 @@ export default async function MainBost(uploadedFilePath: string) {
 
 //     await page.type("#\\:r7\\:", `${ncm}`);
 
-//     console.log('antes do select')
 
 //     const optionValue = '27'; // Valor da opção desejada (São Paulo)
 
@@ -388,13 +412,7 @@ export default async function MainBost(uploadedFilePath: string) {
 //     await page.click("#formBuscaGeralSimulador\\:j_id188");
 
 //     https://www.iobsimuladortributario.com.br/pages/coreonline/integracao/modulos.jsf?codProduto=IST&siglaModulo=ICMSSTHOME&tipo=1&codigo=22072020&origem=22&destino=22
-//     console.log('1')
-//     console.log('2')
-//     console.log('3')
-//     console.log('4')
 
 // }
 // catch (error) {
-//     console.log('erro no novo código')
-//     console.log(error)
 // }
