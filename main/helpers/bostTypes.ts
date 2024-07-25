@@ -11,3 +11,9 @@ export interface mvaDictTypes {
         variants?: string[]
     ]
 }
+
+export interface userDataProps {
+    username: string,
+    password: string,
+    filePath: string
+  }

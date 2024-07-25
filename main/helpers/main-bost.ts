@@ -5,8 +5,9 @@
 import puppeteer, { Page } from 'puppeteer';
 import exceljs from 'exceljs'
 import { format } from 'date-fns';
-import { ScrapedMVAs } from './bostTypes';
-import { obterValorEstado } from './findStateValue';
+import { ScrapedMVAs, userDataProps } from './bostTypes';
+import { obterNomeEstado, obterValorEstado } from './findStateValue';
+import { dialog, ipcMain } from 'electron';
 
 interface NCMData {
     ncmNumber: string;
@@ -16,7 +17,7 @@ interface NCMData {
   
   
 
-export default async function MainBost(uploadedFilePath: string) {
+export default async function MainBost(userData: userDataProps, mainWindow:Electron.CrossProcessExports.BrowserWindow, browser) {
 
 
     async function getExcelNCMs(excelPath: string) {
@@ -72,9 +73,9 @@ export default async function MainBost(uploadedFilePath: string) {
         return
     }
 
-    async function openBrowser() {
+    async function openBrowser(browser) {
 
-        const browser = await puppeteer.launch({ headless: true });
+        // const browser = await puppeteer.launch({ headless: true });
 
         const page = await browser.newPage();
         await page.setViewport({
@@ -85,7 +86,7 @@ export default async function MainBost(uploadedFilePath: string) {
         return page
     }
 
-    async function loginIOB(page: Page) {
+    async function loginIOB(page: Page, username:userDataProps["username"], password:userDataProps["password"]) {
 
         try {
             // EFETUANDO LOGIN
@@ -93,31 +94,55 @@ export default async function MainBost(uploadedFilePath: string) {
 
             await page.waitForSelector('#username', { timeout: 180000, visible: true });
 
-            await page.type('#username', 'iob.6572749');
-            await page.type('#password', '41756199');
+            await page.type('#username', username);
+            await page.type('#password', password);
+            // await page.type('#username', 'iob.6572749');
+            // await page.type('#password', '41756199');
 
             await navTimeout(page)
 
             await page.click('#root > section > div > section > form > div._groupButton_cwe1u_99 > button')
 
+            try {
+
+                const userNotFoundAlert = await page.waitForSelector("#root > div > div > div > div.MuiAlert-message.css-1xsto0d", { timeout: 10000, visible: true });
+
+                const alertText = await userNotFoundAlert.evaluate(element => element.textContent);
+       
+    
+                if (alertText === "Usuário Não Encontrado") {
+                    console.log('retornou falso')
+                    return false
+                }
+                
+            } catch (error) {} finally {}
+
+            
             // CASO EXISTA, FECHA POP UP, SE NÃO, DÁ NAV TIMEOUT
             try {
 
-                await page.waitForSelector("body > div.MuiDialog-root.MuiModal-root.css-126xj0f > div.MuiDialog-container.MuiDialog-scrollPaper.css-ekeie0 > div > div.MuiDialogActions-root.MuiDialogActions-spacing.css-1vskg8q > button.MuiButtonBase-root.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.css-1kvsn8", { timeout: 30000, visible: true });
+                await page.waitForSelector("body > div.MuiDialog-root.MuiModal-root.css-126xj0f > div.MuiDialog-container.MuiDialog-scrollPaper.css-ekeie0 > div > div.MuiDialogActions-root.MuiDialogActions-spacing.css-1vskg8q > button.MuiButtonBase-root.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.css-1kvsn8", { timeout: 3000, visible: true });
                 await navTimeout(page)
 
                 await page.click('body > div.MuiDialog-root.MuiModal-root.css-126xj0f > div.MuiDialog-container.MuiDialog-scrollPaper.css-ekeie0 > div > div.MuiDialogActions-root.MuiDialogActions-spacing.css-1vskg8q > button.MuiButtonBase-root.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary.MuiButton-sizeMedium.MuiButton-containedSizeMedium.css-1kvsn8')
 
 
             } catch (error) {
+
                 console.log('encerrar sessão não encontrado')
-            } finally {
+
                 await navTimeout(page)
+            } finally {
+                await navTimeout(page, 5000)
 
                 // await page.waitForSelector('#modalGenericoIST > div.closeSession > img.fechaModalSessao', { timeout: 30000, visible: true });
 
 
                 // await page.click(".fechaModalSessao")
+
+            
+                
+                    
 
                 return true
             }
@@ -173,7 +198,7 @@ export default async function MainBost(uploadedFilePath: string) {
 
     }
 
-    async function getMVA(page: Page, ncm: string) {
+    async function getMVA(page: Page, ncm: string, estadoOrigem: string, estadoDestino:string) {
         // PEGA O MVA E A RESPECTIVA DESCRIÇÃO
         try {
 
@@ -195,12 +220,16 @@ export default async function MainBost(uploadedFilePath: string) {
 
                 const mvaValue = await mvaElement.evaluate(element => element.textContent);
 
+                const mvaCestElement = await page.waitForSelector(`#bla > fieldset > div > table > tbody > tr:nth-child(4) > td`, { timeout: 3000 });
+                const mvaCest = await mvaCestElement.evaluate(element => element.textContent);
+
                 const mvaDescElement = await page.waitForSelector(`#bla > fieldset > div > table > tbody > tr:nth-child(1) > td > span.produtoTipo`, { timeout: 3000 });
                 const mvaDesc = await mvaDescElement.evaluate(element => element.textContent);
 
+                const nomeEstadoOrigem = await obterNomeEstado(Number(estadoOrigem))
+                const nomeEstadoDestino = await obterNomeEstado(Number(estadoDestino))
 
-
-                mvaDict.push(`${ncm};${mvaDesc};${mvaValue}`)
+                mvaDict.push(`${ncm};${nomeEstadoOrigem};${nomeEstadoDestino};${mvaCest};${mvaDesc.replaceAll(";", " --")};${mvaValue}`)
 
             // CASO TENHA MAIS DE 1 MVA, FAZ A BUSCA PELA TABELA COM O NUMERO DE VARIAÇÕES E RETORNA O ARRAY COM OS DADOS
             } else if (numVariations > 1) {
@@ -209,12 +238,19 @@ export default async function MainBost(uploadedFilePath: string) {
 
                 for (let i = 1; i <= numVariations; i++) {
 
-                    const mvaElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr.blockMVA > td.resultMVA.mvaVigente`, { timeout: 3000 });
+                    const mvaElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr:nth-child(4) > td`, { timeout: 3000 });
                     const mvaValue = await mvaElement.evaluate(element => element.textContent);
+
+                    const mvaCestElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr.blockMVA > td.resultMVA.mvaVigente`, { timeout: 3000 });
+                    const mvaCest = await mvaElement.evaluate(element => element.textContent);
+                    
                     const mvaDescElement = await page.waitForSelector(`#bla > fieldset > div > table:nth-child(${i}) > tbody > tr:nth-child(1) > td > span.produtoTipo`, { timeout: 3000 });
                     const mvaDesc = await mvaDescElement.evaluate(element => element.textContent);
 
-                    variants.push(`${ncm};${mvaDesc};${mvaValue}`)
+                    const nomeEstadoOrigem = await obterNomeEstado(Number(estadoOrigem))
+                    const nomeEstadoDestino = await obterNomeEstado(Number(estadoDestino))
+
+                    variants.push(`${ncm};${nomeEstadoOrigem};${nomeEstadoDestino};${mvaCest};${mvaDesc.replaceAll(";", " --")};${mvaValue}`)
 
 
                 }
@@ -259,7 +295,7 @@ export default async function MainBost(uploadedFilePath: string) {
                     await page.click(buttonSelector);
 
                     try {
-                        const mvaDict = await getMVA(page, ncmNumber)
+                        const mvaDict = await getMVA(page, ncmNumber, estadoOrigem, estadoDestino)
                         mvaList.push(...mvaDict)
 
                     } catch (error) {
@@ -275,7 +311,7 @@ export default async function MainBost(uploadedFilePath: string) {
             } catch (error) {
 
                 try {
-                    const mvaDict = await getMVA(page, ncmNumber)
+                    const mvaDict = await getMVA(page, ncmNumber, estadoOrigem, estadoDestino)
                     mvaList.push(...mvaDict)
 
 
@@ -296,26 +332,36 @@ export default async function MainBost(uploadedFilePath: string) {
     }
 
     // FILEPATH DO EXCEL
-    const filePath = uploadedFilePath
+    const {username, password, filePath} = userData
 
     const MVAs: string[] = []
 
     // PEGANDO OS NCMS DO EXCEL
-    const { jsonNCMs, workbook, worksheet } = await getExcelNCMs(uploadedFilePath)
+    const { jsonNCMs, workbook, worksheet } = await getExcelNCMs(filePath)
 
-    const page = await openBrowser()
+    mainWindow.webContents.send('is-loading', true)
+
+    const page = await openBrowser(browser)
     
     // CHECAGEM DE LOGIN
-    const isLogged = await loginIOB(page)
+    const isLogged = await loginIOB(page, username, password)
 
     if (!isLogged) {
+
+        mainWindow.webContents.send('console-messages', 'Problema de autenticação, tente novamente.')
+
+        mainWindow.webContents.send('is-loading', false)
+        
         return
     }
+
+    mainWindow.webContents.send('console-messages', 'Login efetuado com sucesso.')
 
     // SCRAPING CADA NCM DA LISTA DO EXCEL
     for (const ncm of jsonNCMs) {
 
         console.log(`Scraping ncm: ${ncm.ncmNumber}`)
+        mainWindow.webContents.send('console-messages', `Buscando MVAs do NCM ${ncm.ncmNumber}.`)
 
         let scrapedMVAs = await scrapeMVA(ncm)
 
@@ -331,6 +377,33 @@ export default async function MainBost(uploadedFilePath: string) {
 
     // FORMATANDO O NOME DO ARQUIVO
     const formattedDate = format(new Date(), 'dd-MM-yyyy-HH-mm-ss');
+
+    mainWindow.webContents.send('console-messages', `Exportando dados em excel...`)
+
+    
+
+    const options = {
+        title: 'Salvar Planilha',
+        defaultPath: `ncm-${formattedDate}.xlsx`, // Nome do arquivo sugerido
+        filters: [
+          { name: 'Arquivos Excel', extensions: ['xlsx'] },
+        ],
+      };
+
+      mainWindow.webContents.send('is-loading', false)
+
+
+    dialog.showSaveDialog(mainWindow, options).then(result => {
+    if (!result.canceled) {
+        const filePath = result.filePath;
+        workbook.xlsx.writeFile(filePath).then(() => {
+        console.log("Programa finalizado.");
+        mainWindow.webContents.send('console-messages', `Planilha salva em: ${filePath}`);
+        });
+    } else {
+        mainWindow.webContents.send('console-messages', 'Salvamento cancelado pelo usuário.');
+    }
+    });
 
     // SALVANDO ARQUIVO
     await workbook.xlsx.writeFile(`renderer/public/data/ncm-${formattedDate}.xlsx`);

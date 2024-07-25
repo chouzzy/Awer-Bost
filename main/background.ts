@@ -5,11 +5,10 @@ import { createWindow } from './helpers'
 import puppeteer from 'puppeteer';
 import PCR from "puppeteer-chromium-resolver";
 
-import goToGoogle from './helpers/go-to-google';
 // import MainBost from './helpers/main-bost';
-import MainBost2 from './helpers/main-bost-2';
 import exceljs from 'exceljs'
 import MainBost from './helpers/main-bost';
+import { userDataProps } from './helpers/bostTypes';
 
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -24,8 +23,8 @@ if (isProd) {
   await app.whenReady()
 
   const mainWindow = createWindow('main', {
-    width: 1000,
-    height: 600,
+    width: 640,
+    height: 840,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -43,20 +42,22 @@ if (isProd) {
     const homeDir = require('os').homedir()
     const desktopDir = `${homeDir}/Desktop`
 
-
     try {
       const browser = await stats.puppeteer.launch({
-        headless: false,
+        headless: true,
         args: ["--no-sandbox"],
         executablePath: stats.executablePath
       }).catch(function (error) {
         console.log(error);
       });
 
-      const page = await browser.newPage();
-
-      await page.goto('https://www.iobonline.com.br/index/login');
-      // ... continue com o código que utiliza o navegador ...
+      ipcMain.on('send-userData', async (event, userData: userDataProps) => {
+        console.log(userData)
+  
+        await MainBost(userData, mainWindow, browser)
+  
+        app.quit()
+      })
     } catch (error) {
       // Escreve o erro na célula A1 da planilha "teste.xlsx"
       const workbook = new exceljs.Workbook();
@@ -70,30 +71,32 @@ if (isProd) {
       await workbook.xlsx.writeFile(`${desktopDir}/testeSuccess2.xlsx`);
     }
 
-
-
-    setTimeout(() => {
-
-      app.quit()
-    }, 10000)
-
-    // DESENVOLVIMENTO
-  } 
+  }
   // DSESENVOLVIMENTO
   else {
 
     console.log('Modo de desenvolvimento: ativado.')
     const port = process.argv[2]
     await mainWindow.loadURL(`http://localhost:${port}/home`)
-    mainWindow.webContents.openDevTools()
-    ipcMain.on('send-message', async (event, message) => {
-      console.log(message)
 
-      await MainBost(message)
+    const browser = await stats.puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox"],
+      executablePath: stats.executablePath
+    }).catch(function (error) {
+      console.log(error);
+    });
+
+    // ABRE AS DEVTOOLS NO APP
+    // mainWindow.webContents.openDevTools()
+
+    ipcMain.on('send-userData', async (event, userData: userDataProps) => {
+      console.log(userData)
+
+      await MainBost(userData, mainWindow, browser)
+
+      // app.quit()
     })
-
-
-   
 
   }
 })()
