@@ -7,7 +7,7 @@ import PCR from "puppeteer-chromium-resolver";
 // import MainBost from './helpers/main-bost';
 import exceljs from 'exceljs'
 import MainBost from './helpers/main-bost';
-import { dateSelected } from './helpers/generalTypes';
+import { dateSelected, ScrapeData } from './helpers/generalTypes';
 
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -22,8 +22,11 @@ if (isProd) {
   await app.whenReady()
 
   const mainWindow = createWindow('main', {
-    width: 720,
-    height: 800,
+    icon:'./app/images/logos/boTRT-icon.ico',
+    // simpleFullscreen:true,
+    autoHideMenuBar:true,
+    height:1290,
+    width:980,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -43,10 +46,10 @@ if (isProd) {
 
     try {
 
-      ipcMain.on('date-selected', async (event, date: dateSelected) => {
-        console.log('Data recebida do processo renderizador:', date);
+      ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
+        console.log('Dados recebidos do processo renderizador:', scrapeData);
         mainWindow.webContents.send('is-loading', true)
-        await MainBost(date, mainWindow)
+        await MainBost(scrapeData, mainWindow)
   
       });
       // ... continue com o código que utiliza o navegador ...
@@ -67,10 +70,10 @@ if (isProd) {
     // mainWindow.webContents.openDevTools()
 
 
-    ipcMain.on('date-selected', async (event, date: dateSelected) => {
-      console.log('Data recebida do processo renderizador:', date);
+    ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
+      console.log('Dados recebidos do processo renderizador:', scrapeData);
       mainWindow.webContents.send('is-loading', true)
-      await MainBost(date, mainWindow)
+      await MainBost(scrapeData, mainWindow)
 
     });
   }

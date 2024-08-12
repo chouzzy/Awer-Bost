@@ -1,6 +1,7 @@
-appId: com.example.nextron
-productName: My Nextron App
-copyright: Copyright © 2018 Yoshihide Shiono
+appId: aewr.boTRT
+productName: boTRT
+copyright: Copyright © 2023 Matheus Lopes
+icon: ./app/images/logos/boTRT-icon.ico
 directories:
   output: dist
   buildResources: resources
@@ -8,5 +9,17 @@ files:
   - from: .
     filter:
       - package.json
-      - app
-publish: null
+      - app/**/*
+win:
+  icon: ./app/images/logos/boTRT-icon.ico
+  target:
+    - target: nsis
+      arch: [x64, ia32]
+mac:
+  icon: ./app/assets/icons/mac/icon.icns
+  target:
+    - target: dmg
+linux:
+  icon: ./app/assets/icons/linux/icon.png
+  target:
+    - target: AppImage

@@ -1,18 +1,26 @@
-// index.js
-
-// O inicio do programa está em main.html
-
-import puppeteer, { HTTPRequest } from 'puppeteer';
-import { unescape } from 'he';
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain } from 'electron';
 
 import exceljs from 'exceljs'
-import { format } from 'date-fns';
-import { AudienciaSimplificada, PautaAudienciaResponse } from './audiencias';
-import { dateSelected } from './generalTypes';
 import PCR from "puppeteer-chromium-resolver";
+import { trtDict } from './trtDict';
+import { writeData } from './writeData';
+import { scrapeMinhaPauta } from './scrape/minhaPauta/scrapeMinhaPauta';
+import { credentials, PuppeteerResult, ScrapeData } from './generalTypes';
+import { excelDataIdentified } from './audiencias';
+import { scrapeArquivados } from './scrape/processosArquivados/scrapeArquivados';
 
-export default async function MainBost(dateSelectedTest: dateSelected, mainWindow: Electron.CrossProcessExports.BrowserWindow) {
+export default async function MainBost(scrapeData: ScrapeData, mainWindow: Electron.CrossProcessExports.BrowserWindow) {
+
+    const { username, password, trt, painel, date } = scrapeData
+
+    const trtSubmitted:number = trtDict[trt]
+
+    const credentials: credentials = {
+        user: username,
+        password: password
+        // 15992496858
+        // Bqq188332@
+    }
 
     async function timeoutDelay(seconds: number) {
         setTimeout(async () => {
@@ -60,46 +68,19 @@ export default async function MainBost(dateSelectedTest: dateSelected, mainWindo
         // Retornar o JSON
         return jsonNCMs;
     }
-    async function writeData(
-        worksheet: exceljs.Worksheet,
-        workbook: exceljs.Workbook,
-        excelData: AudienciaSimplificada[],
-        filePath
-    ) {
+
+    async function startPuppeteer(headless: boolean): Promise<PuppeteerResult> {
 
 
-        const homeDir = require('os').homedir()
-        const desktopDir = `${homeDir}/Desktop`
-        // Definindo os cabeçalhos das colunas
-        worksheet.columns = [
-            { header: 'Número do Processo', key: 'numeroProcesso', width: 25 },
-            { header: 'Tipo de Audiência', key: 'tipoAudiencia', width: 30 },
-            { header: 'Órgão Julgador', key: 'orgaoJulgador', width: 50 }
-        ];
-
-        // Preenchendo as células com os dados
-        excelData.forEach((audiencia, index) => {
-            worksheet.getRow(index + 2).values = [
-                audiencia.numeroProcesso,
-                audiencia.tipoAudiencia,
-                audiencia.orgaoJulgador
-            ];
-        });
-
-        // Salvando o arquivo Excel (adaptando o caminho do arquivo)
-        const formattedDate = format(new Date(), 'dd-MM-yyyy-HH-mm-ss');
-        // await workbook.xlsx.writeFile(`${desktopDir}/audiencias-${formattedDate}.xlsx`);
-        await workbook.xlsx.writeFile(`${filePath}/audiencias-${formattedDate}.xlsx`);
-
-    }
-
-    async function startPuppeteer(headless: boolean) {
         const options = {};
         const stats = await PCR(options);
 
         const browser = await stats.puppeteer.launch({
             headless: headless,
-            args: ["--no-sandbox"],
+            args: [
+                "--no-sandbox",
+                '--disable-web-security',
+            ],
             executablePath: stats.executablePath
         }).catch(function (error) {
         });
@@ -109,62 +90,98 @@ export default async function MainBost(dateSelectedTest: dateSelected, mainWindo
             width: 1280,
             height: 720,
         });
+        await page.setBypassCSP(true)
 
-        return page
+        return { page, browser }
     }
 
+    let listOfExcelData: excelDataIdentified[]
 
-    const workbook = new exceljs.Workbook();
-    const worksheet = workbook.addWorksheet('Dados da Audiência')
+    switch (painel) {
+        case "Minha pauta":
 
+            listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
 
-    const page = await startPuppeteer(false)
+            mainWindow.webContents.send('is-loading', false)
 
-    await page.goto('https://pje.trt1.jus.br/primeirograu/login.seam');
-    // await page.waitForNavigation({timeout:2000})
+            ipcMain.handle('dialog:saveFile', async () => {
 
-    await page.waitForSelector('#btnEntrar', { visible: true })
+                const { canceled, filePaths } = await dialog.showOpenDialog({
+                    properties: ['openDirectory']
+                })
 
-    await page.type('#username', '15992496858');
-    await page.type('#password', 'Bqq188332@');
+                if (!canceled) {
 
+                    await writeData(listOfExcelData, filePaths, painel)
+                }
 
-    await page.click('#btnEntrar')
+            })
 
-    await page.waitForNavigation({ waitUntil: 'networkidle2' })
+            break;
 
-    await page.goto(`https://pje.trt1.jus.br/pje-comum-api/api/pauta-usuarios-externos?dataFim=${dateSelectedTest.final.year}-${dateSelectedTest.final.month}-${dateSelectedTest.final.day}&dataInicio=${dateSelectedTest.initial.year}-${dateSelectedTest.initial.month}-${dateSelectedTest.initial.day}&codigoSituacao=M&numeroPagina=1&tamanhoPagina=15&ordenacao=asc`);
+        case 'Processos arquivados':
 
-    await page.waitForSelector('pre');
+            listOfExcelData = await scrapeArquivados(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
 
-    const html = await page.$eval('pre', el => el.textContent);
+            mainWindow.webContents.send('is-loading', false)
 
-    const json = JSON.parse(html);
+            ipcMain.handle('dialog:saveFile', async () => {
 
-    const excelData: AudienciaSimplificada[] = []; // Inicializando um array vazio
+                const { canceled, filePaths } = await dialog.showOpenDialog({
+                    properties: ['openDirectory']
+                })
 
-    json.resultado.forEach(audit => {
-        excelData.push({
-            numeroProcesso: audit.processo.numero,
-            tipoAudiencia: unescape(audit.tipo.descricao),
-            orgaoJulgador: unescape(audit.processo.orgaoJulgador.descricao)
-        });
-    });
+                if (!canceled) {
 
-    mainWindow.webContents.send('is-loading', false)
+                    await writeData(listOfExcelData, filePaths, painel)
+                }
 
-    ipcMain.handle('dialog:saveFile', async () => {
+            })
 
-        const { canceled, filePaths } = await dialog.showOpenDialog({
-            properties: ['openDirectory']
-        })
+        default:
+            break;
+    }
 
-        if (!canceled) {
-            await writeData(worksheet, workbook, excelData, filePaths)
-        }
-
-    })
 
 
 
 }
+
+
+
+
+
+
+
+
+
+
+// for (let trt = 24; trt >= 1; trt--) {
+
+//     let json = await scrapeTRT(painel, date, credentials, 'primeirograu', `${trt}`, startPuppeteer)
+
+//     listOfExcelData.push(json)
+
+//     if (json.excelData[0].numeroProcesso === 'erro') {
+//         loginErrors.push(trt)
+//         listOfExcelData.push({
+//             excelData:[{
+//                 numeroProcesso:`erro ${trt}`,
+//                 orgaoJulgador:`erro ${trt}`,
+//                 tipoAudiencia:`erro ${trt}`
+//             }],
+//             identifier:{
+//                 grau:`${trt}`,
+//                 trt:`${trt}`
+//             }
+//         })
+//     }
+
+//     json = await scrapeTRT(painel, date, credentials, 'segundograu', `${trt}`, startPuppeteer)
+
+//     listOfExcelData.push(json)
+
+//     if (json.excelData[0].numeroProcesso === 'erro') {
+//         loginErrors.push(trt)
+//     }
+// }

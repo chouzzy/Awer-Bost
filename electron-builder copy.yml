@@ -1,0 +1,12 @@
+appId: com.example.nextron
+productName: boTRT
+copyright: Copyright © 2023 Matheus Lopes
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - from: .
+    filter:
+      - package.json
+      - app
+publish: null

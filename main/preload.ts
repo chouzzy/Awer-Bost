@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import { dateSelected } from './helpers/generalTypes'
+import { dateSelected, ScrapeData } from './helpers/generalTypes'
 
 const handler = {
   send(channel: string, value: unknown) {
@@ -23,7 +23,11 @@ const handler = {
   
   callFront: (callback) => ipcRenderer.on('call-front', (_event, value) => callback(value)),
   
-  isLoading: (callback) => ipcRenderer.on('is-loading', (_event, value) => callback(value))
+  isLoading: (callback) => ipcRenderer.on('is-loading', (_event, value) => callback(value)),
+  
+  loginError: (callback) => ipcRenderer.on('login-error', (_event, value) => callback(value)),
+
+  scrapeData: (scrapeData: ScrapeData) => ipcRenderer.send('scrape-data', scrapeData)
 
 
 }
