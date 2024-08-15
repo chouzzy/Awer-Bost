@@ -16,19 +16,24 @@ const handler = {
   },
 
   sendMessage: (message: string) => ipcRenderer.send('send-message', message),
-  
+
   dateSelected: (date: dateSelected) => ipcRenderer.send('date-selected', date),
-  
+
   saveFile: () => ipcRenderer.invoke('dialog:saveFile'),
-  
+  // ipcMain.handle('dialog:saveFile', async () => {
+  // })
+
   callFront: (callback) => ipcRenderer.on('call-front', (_event, value) => callback(value)),
-  
+
   isLoading: (callback) => ipcRenderer.on('is-loading', (_event, value) => callback(value)),
   
   loginError: (callback) => ipcRenderer.on('login-error', (_event, value) => callback(value)),
-
-  scrapeData: (scrapeData: ScrapeData) => ipcRenderer.send('scrape-data', scrapeData)
-
+  
+  scrapeData: (scrapeData: ScrapeData) => ipcRenderer.send('scrape-data', scrapeData),
+  
+  saveExcel: async () => ipcRenderer.send('save-excel'),
+  
+  processFinished: (callback) => ipcRenderer.on('process-finished', (_event, value) => callback(value)),
 
 }
 

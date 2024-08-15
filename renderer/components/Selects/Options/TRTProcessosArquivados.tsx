@@ -1,7 +1,7 @@
-import { ScrapeData } from "../../main/helpers/generalTypes"
+import { ScrapeData } from "../../../../main/helpers/generalTypes"
 
 
-export function TRTMinhaPauta() {
+export function TRTProcessosArquivados() {
 
     const trtsMinhaPauta = [
         'Selecione',
@@ -30,11 +30,27 @@ export function TRTMinhaPauta() {
         'TRT-23',
         'TRT-24',
     ]
+    const trtsArquivados = [
+        'Selecione',
+        "TRT-1",
+        "TRT-2",
+        "TRT-3",
+        "TRT-4",
+        "TRT-5",
+        "TRT-9",
+        "TRT-10",
+        "TRT-15",
+        "TRT-16",
+        "TRT-17",
+        "TRT-23",
+        "TRT-24"
+    ]
+
 
     return (
         <>
             {
-                trtsMinhaPauta.map((trt, index) => {
+                trtsArquivados.map((trt, index) => {
                     return (
                         <option key={index} style={{ color: 'black' }}>{trt}</option>
                     )

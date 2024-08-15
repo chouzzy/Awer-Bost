@@ -13,7 +13,7 @@ export default async function MainBost(scrapeData: ScrapeData, mainWindow: Elect
 
     const { username, password, trt, painel, date } = scrapeData
 
-    const trtSubmitted:number = trtDict[trt]
+    const trtSubmitted: number = trtDict[trt]
 
     const credentials: credentials = {
         user: username,
@@ -103,8 +103,11 @@ export default async function MainBost(scrapeData: ScrapeData, mainWindow: Elect
             listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
 
             mainWindow.webContents.send('is-loading', false)
+            
+            mainWindow.webContents.send('process-finished', true)
 
-            ipcMain.handle('dialog:saveFile', async () => {
+
+            ipcMain.on('save-excel', async (event) => {
 
                 const { canceled, filePaths } = await dialog.showOpenDialog({
                     properties: ['openDirectory']
@@ -125,7 +128,9 @@ export default async function MainBost(scrapeData: ScrapeData, mainWindow: Elect
 
             mainWindow.webContents.send('is-loading', false)
 
-            ipcMain.handle('dialog:saveFile', async () => {
+            mainWindow.webContents.send('process-finished', true)
+
+            ipcMain.on('save-excel', async (event) => {
 
                 const { canceled, filePaths } = await dialog.showOpenDialog({
                     properties: ['openDirectory']

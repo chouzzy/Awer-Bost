@@ -3,10 +3,10 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Button, Link as ChakraLink } from '@chakra-ui/react'
 
-import { Container } from '../components/Container'
-import { DarkModeSwitch } from '../components/DarkModeSwitch'
-import { Footer } from '../components/Footer'
-import { Hero } from '../components/Hero'
+import { Container } from '../components/InheritComponents/Container'
+import { DarkModeSwitch } from '../components/InheritComponents/DarkModeSwitch'
+import { Footer } from '../components/InheritComponents/Footer'
+import { Hero } from '../components/InheritComponents/Hero'
 
 export default function NextPage() {
   return (

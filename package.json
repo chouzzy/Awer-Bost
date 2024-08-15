@@ -11,6 +11,7 @@
     "build-installer": "electron-builder"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.7",
     "@types/he": "^1.2.3",
     "axios": "^1.6.8",
     "date-fns": "^3.6.0",

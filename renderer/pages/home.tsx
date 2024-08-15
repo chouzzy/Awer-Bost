@@ -1,15 +1,35 @@
 import React, { useEffect, useState } from 'react'
 import Head from 'next/head'
-import Image from 'next/image'
-import { Button, Flex, FormControl, FormLabel, Input, Select, Spinner, Text } from '@chakra-ui/react'
+import { Flex, Spinner } from '@chakra-ui/react'
 
-import * as yup from 'yup';
-import { WarningIcon } from '@chakra-ui/icons'
-import { Container } from '../components/Container'
-import { trtSchema } from '../components/FormValidator'
-import { TRTMinhaPauta } from '../components/TRTMinhaPauta'
-import { DarkModeSwitch } from '../components/DarkModeSwitch'
-import { TRTProcessosArquivados } from '../components/TRTProcessosArquivados'
+
+
+import { SaveButton } from '../components/HomeButtons/SaveButton';
+import { BackButton } from '../components/HomeButtons/BackButton';
+
+import { Container } from '../components/InheritComponents/Container'
+import { DarkModeSwitch } from '../components/InheritComponents/DarkModeSwitch'
+
+import { ImportOperation } from '../components/ImportOperation/ImportOperation';
+
+import { SelectOperation } from '../components/SelectOperation/SelectOperation';
+
+import { PasswordInput } from '../components/HomeInputs/PasswordInput';
+import { LoginInput } from '../components/HomeInputs/LoginInput';
+import { DateInput } from '../components/HomeInputs/DateInput';
+
+import { SelectTRT } from '../components/Selects/SelectTRT';
+import { SelectPainel } from '../components/Selects/SelectPainel';
+
+import { Logo } from '../components/Banners/Logo';
+import { trtSchema } from '../components/Validation/FormValidator'
+import { WarningAlert } from '../components/Alerts/WarningAlert';
+import { StartButtonSingleSearch } from '../components/HomeButtons/StartButtonSingleSearch';
+import { handleSubmitSingleSearch } from '../services/SingleSearch';
+
+
+
+
 
 
 export default function HomePage() {
@@ -29,8 +49,16 @@ export default function HomePage() {
     })
   }, [])
 
+  useEffect(() => {
+    window.ipc.processFinished(async (value) => {
+      setProcessFinished(true)
+    })
+  }, [])
+
   const [file, setFile] = useState(true);
+
   const [loading, setLoading] = useState(false);
+  const [processFinished, setProcessFinished] = useState(false);
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -42,73 +70,35 @@ export default function HomePage() {
 
   const [warningAlert, setWarningAlert] = useState('');
 
-  async function handleSubmit() {
+  const [multiOperation, setMultiOperation] = useState(false);
 
-    if ((painel == "Minha pauta") && (!initialDate || !finalDate)) {
-      return setWarningAlert('Insira a data inicial e a data final')
-    }
+  const [isOperationSelected, setIsOperationSelected] = useState(false)
+
+  const [filePath, setFilePath] = useState(null);
 
 
-    const initialDateObj = new Date(initialDate)
-    const finalDateObj = new Date(finalDate)
-
-    const date = {
-      initial: {
-        day: initialDateObj.getDate().toString().padStart(2, '0'),
-        month: (initialDateObj.getMonth() + 1).toString().padStart(2, '0'),
-        year: initialDateObj.getFullYear().toString(),
-      },
-      final: {
-        day: finalDateObj.getDate().toString().padStart(2, '0'),
-        month: (finalDateObj.getMonth() + 1).toString().padStart(2, '0'),
-        year: finalDateObj.getFullYear().toString(),
-      }
-    }
-
-    try {
-
-      await trtSchema.validate({
-        username,
-        password,
-        trt,
-        painel
-      })
-
-    } catch (error) {
-
-      if (error instanceof yup.ValidationError) {
-        setWarningAlert(String(error.errors))
-      }
-      return
-    }
-
-    if (painel != 'Minha pauta' &&
-      painel != 'Processos arquivados' &&
-      painel != 'Pendentes de manifestação' &&
-      painel != 'Acervo Geral') {
-      return alert('Erro de seleção, favor contactar o desenvolvedor.')
-    }
-
-    window.ipc.scrapeData({
-      username,
-      password,
-      trt,
-      painel,
-      date
-    })
+  const singleSearchData = {
+    painel,
+    initialDate,
+    finalDate,
+    setWarningAlert,
+    username,
+    password,
+    trt
   }
+
 
   async function saveFilePath() {
-    await window.ipc.saveFile()
+    await window.ipc.saveExcel()
   }
-
-
 
   return (
     <React.Fragment>
+
       <Head>
         <title>B🔍TRT </title>
       </Head>
+
       <Container
         minHeight="100vh"
         bgImage={'/images/bgs/judge-bg2.png'}
@@ -119,8 +109,6 @@ export default function HomePage() {
 
         <DarkModeSwitch />
 
-
-
         <Flex
           h='100vh'
           w='100vw'
@@ -128,19 +116,7 @@ export default function HomePage() {
           alignItems={'center'}
           pb={8}
         >
-          <Flex
-            maxW={'250px'}
-            maxH={'250px'}
-            mt={12}
-          >
-
-            <Image
-              alt="Logo icon"
-              src={'/images/logos/boTRT-logo.png'}
-              width={'250px'}
-              height={'250px'}
-            />
-          </Flex>
+          <Logo />
           {
             loading ?
               <Spinner
@@ -152,277 +128,133 @@ export default function HomePage() {
                 size='xl'
               />
               :
-              <Flex >
+              <Flex>
 
-                <Flex
-                  flexDir={'column'}
-                  gap={1}
-                  w={'560px'}
-                >
-                  {warningAlert ?
-                    <Flex mt={4} bg='#FF5F5E' borderRadius={4} color='white' p={2} alignItems={'center'} gap={4}>
-                      <Flex> <WarningIcon fontSize={24} /> </Flex>
-                      <Flex> <Text fontSize={'0.875rem'}> {warningAlert} </Text> </Flex>
-                    </Flex>
-                    :
-                    ''
-                  }
-
-                  {/* INPUTS DE USO DO TRT */}
-                  <Flex
-                    w='100%'
-                    gap={8}
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                  >
-
-                    {/* INPUT USERNAME, PASSWORD, TRT E SCRAPE */}
-                    <Flex
-                      gap={4}
-                      flexDir={'column'}
-                      w='100%'
-                    >
-
-                      <FormControl
-                        isRequired={true}
-                      >
-                        <FormLabel
-                          fontSize={'0.875rem'}
-                          fontWeight={'700'}
-                          letterSpacing={'5%'}
-                          color={'white'}
-                        >
-                          Selecione o painel
-                        </FormLabel>
-
-                        <Select
-                          id='#scrape'
-                          color={'black'}
-                          bg={'white'}
-                          _hover={{ bg: 'purple.600', color: 'white' }}
-                          value={painel}
-                          onChange={(event) => { setPainel(event.target.value) }}
-                        >
-                          <option style={{ color: 'black' }}>{'Selecione'}</option>
-                          <option style={{ color: 'black' }}>{'Minha pauta'}</option>
-                          <option style={{ color: 'black' }}>{'Processos arquivados'}</option>
-                          {/* <option style={{ color: 'black' }}>{'Acervo Geral'}</option> */}
-                          {/* <option style={{ color: 'black' }}>{'Pendentes de manifestação'}</option> */}
-                        </Select>
-                      </FormControl>
-
-                      <FormControl
-                        isRequired={true}
-                      >
-                        <FormLabel
-                          fontSize={'0.875rem'}
-                          fontWeight={'700'}
-                          letterSpacing={'5%'}
-                          color={'white'}
-                        >
-                          Digite o login TRT
-                        </FormLabel>
-                        <Input
-                          id='#username'
-                          type='username'
-                          p={1}
-                          color={'black'}
-                          bg={'white'}
-                          _hover={{ bg: 'purple.600', color: 'white' }}
-                          onChange={(event) => { setUsername(event.target.value) }}
-                        />
-                      </FormControl>
-
-                      <FormControl
-                        isRequired={true}
-                      >
-                        <FormLabel
-                          fontSize={'0.875rem'}
-                          fontWeight={'700'}
-                          letterSpacing={'5%'}
-                          color={'white'}
-                        >
-                          Senha TRT
-                        </FormLabel>
-
-                        <Input
-                          id='#password'
-                          type='password'
-                          p={1}
-                          color={'black'}
-                          bg={'white'}
-                          _hover={{ bg: 'purple.600', color: 'white' }}
-                          onChange={(event) => { setPassword(event.target.value) }}
-                        />
-                      </FormControl>
-
-                      {
-                        painel != "Selecione" ?
-                          <FormControl
-                            isRequired={true}
-                          >
-                            <FormLabel
-                              fontSize={'0.875rem'}
-                              fontWeight={'700'}
-                              letterSpacing={'5%'}
-                              color={'white'}
-                            >
-                              Selecione o TRT
-                            </FormLabel>
-
-                            <Select
-                              id='#TRT'
-                              color={'black'}
-                              bg={'white'}
-                              _hover={{ bg: 'purple.600', color: 'white' }}
-                              value={trt}
-                              onChange={(event) => { setTRT(event.target.value) }}
-                            >
-
-                              {
-                                painel == "Minha pauta" ?
-                                  <TRTMinhaPauta />
-                                  :
-                                  ''
-                              }
-                              {
-                                painel == "Processos arquivados" ?
-                                  <TRTProcessosArquivados />
-                                  :
-                                  ''
-                              }
-                            </Select>
-                          </FormControl>
-                          :
-                          ""
-                      }
-
-                    </Flex>
-
+                {processFinished ?
+                  <Flex gap={2} >
+                    <BackButton setProcessFinished={setProcessFinished} />
+                    <SaveButton file={file} saveFilePath={saveFilePath} />
                   </Flex>
+                  :
 
-                  {
-                    painel == "Minha pauta" ?
-                      // {/* INPUT DATAS */}
-                      <Flex gap={8} justifyContent={'space-between'}>
-                        {/* INPUT DATA INICIAL */}
-                        <Flex
-                        >
-                          <FormControl
-                            isRequired={true}
-                          >
-                            <FormLabel
-                              fontSize={'0.875rem'}
-                              fontWeight={'700'}
-                              letterSpacing={'5%'}
-                              color={'white'}
-                            >
-                              Selecione a data inicial da pesquisa:
-                            </FormLabel>
-                            <Input
-                              id='#initial-date'
-                              type='datetime-local'
-                              p={2}
-                              color={'black'}
-                              bg={'white'}
-                              _hover={{ bg: 'purple.600', color: 'white' }}
-                              onChange={(event) => { setInitialDate(event.target.value) }}
-                            />
-                          </FormControl>
-                        </Flex>
-
-                        {/* INPUT DATA FINAL */}
-                        <Flex
-                        >
-                          <FormControl
-                            isRequired={true}
-                          >
-                            <FormLabel
-                              fontSize={'0.875rem'}
-                              fontWeight={'700'}
-                              letterSpacing={'5%'}
-                              color={'white'}
-                            >
-                              Selecione a data final da pesquisa:
-                            </FormLabel>
-                            <Input
-                              id='#final-date'
-                              type='datetime-local'
-                              p={2}
-                              color={'black'}
-                              bg={'white'}
-                              _hover={{ bg: 'purple.600', color: 'white' }}
-                              onChange={(event) => { setFinalDate(event.target.value) }}
-                            />
-                          </FormControl>
-                        </Flex>
-
-                      </Flex>
-                      :
-                      ''
-                  }
-
-
-                  {/* BOTÃO START */}
                   <Flex
                     flexDir={'column'}
+                    gap={1}
+                    w={'560px'}
                   >
-
-                    {/* BOTÃO START */}
-                    <Button
-                      mx='auto'
-                      variant="solid"
-                      type='submit'
-                      onClick={handleSubmit}
-                      color='white'
-                      bgGradient='linear(to-br, #FF5F5E, #FF5F5Ecc)'
-                      rounded="button"
-                      width={'100%'}
-                      _hover={{ color: 'gray.200', transition: '500ms', textDecor: 'none' }}
-                    >
-                      Clique para iniciar
-                    </Button>
-
-
-                    {/* BOTÃO SAVE FILE */}
-                    {
-                      loading ?
-                        ''
-                        :
-                        <Button
-                          mt={4}
-                          mx='auto'
-                          variant="solid"
-                          type='submit'
-                          onClick={
-                            file ?
-                              () => { '' }
-                              :
-                              () => saveFilePath()
-                          }
-                          color='white'
-                          bgGradient={
-                            file ?
-                              'linear(to-br, #292f36, #292f36cc)'
-                              :
-                              'linear(to-br, #FF5F5E, #FF5F5Ecc)'
-                          }
-                          rounded="button"
-                          width={'100%'}
-                          cursor={
-                            file ?
-                              'default'
-                              :
-                              'pointer'
-                          }
-                          _hover={{ color: 'gray.200', transition: '500ms', textDecor: 'none' }}
-                        >
-                          Salvar
-                        </Button>
+                    {warningAlert ?
+                      <WarningAlert warningAlert={warningAlert} />
+                      :
+                      ''
                     }
-                  </Flex>
 
-                </Flex>
+                    {/* // INPUTS DE USO DO TRT */}
+                    <Flex
+                      w='100%'
+                      gap={8}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                    >
+
+                      {/* INPUT USERNAME, PASSWORD, TRT E SCRAPE */}
+                      <Flex
+                        gap={4}
+                        flexDir={'column'}
+                        w='100%'
+                      >
+
+                        <SelectOperation
+                          multiOperation={multiOperation}
+                          setMultiOperation={setMultiOperation}
+                          isOperationSelected={isOperationSelected}
+                          setIsOperationSelected={setIsOperationSelected}
+                        />
+
+                        <SelectPainel painel={painel} setPainel={setPainel} />
+
+
+                        {isOperationSelected ?
+                          <>
+                            {
+                              multiOperation ?
+                                <ImportOperation setFilePath={setFilePath} />
+                                :
+                                <>
+                                  <LoginInput setUsername={setUsername} />
+                                  <PasswordInput setPassword={setPassword} />
+
+                                  {
+                                    painel != "Selecione" ?
+                                      <SelectTRT trt={trt} setTRT={setTRT} painel={painel} />
+                                      :
+                                      ""
+                                  }
+                                </>
+
+                            }
+                          </>
+                          :
+                          ''
+                        }
+
+
+
+
+
+                      </Flex>
+
+                    </Flex>
+
+                    {multiOperation ?
+                      ''
+                      :
+
+                      <>
+                        {
+                          isOperationSelected ?
+                            <>
+                              {
+                                painel == "Minha pauta" || "Processos arquivados" ?
+                                  <>
+                                    {/* INPUT DATAS */}
+                                    <DateInput setFinalDate={setFinalDate} setInitialDate={setInitialDate} />
+
+                                    {/* BOTÃO START */}
+                                    <Flex
+                                      flexDir={'column'}
+                                      py={4}
+                                      gap={4}
+                                    >
+
+                                      {/* BOTÃO START */}
+                                      <StartButtonSingleSearch singleSearchData={singleSearchData} />
+
+                                      {/* BOTÃO SAVE FILE */}
+                                      {
+                                        // loading ?
+                                        //   ''
+                                        //   :
+                                        //   <SaveButton file={file} saveFilePath={saveFilePath} />
+                                      }
+                                    </Flex>
+                                  </>
+                                  :
+                                  ''
+                              }
+                            </>
+                            :
+                            ''
+
+
+                        }
+                      </>
+                    }
+
+
+
+
+                  </Flex>
+                }
               </Flex>
           }
         </Flex>

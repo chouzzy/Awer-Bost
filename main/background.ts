@@ -23,12 +23,16 @@ if (isProd) {
 
   const mainWindow = createWindow('main', {
     icon:'./app/images/logos/boTRT-icon.ico',
-    // simpleFullscreen:true,
-    autoHideMenuBar:true,
-    height:1290,
-    width:980,
+    // fullscreen:true,
+    minimizable:true,
+    resizable:true,
+    useContentSize:true,
+    closable:true,
+    simpleFullscreen:true,
+    // autoHideMenuBar:true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      devTools:true
     },
   })
 
