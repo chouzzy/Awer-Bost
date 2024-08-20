@@ -41,4 +41,9 @@ export const trtSchema = yup.object().shape({
     painel: yup.string().oneOf(pautas, "Escolha um painel para realizar a pesquisa: Minha pauta, Processos arquivados, Pendentes de manifestação, Acervo Geral").required("Painel inválido")
 });
 
+export const trtSchemaImportOperation = yup.object().shape({
+    filePath: yup.string().required("Caminho de arquivo inválido"),
+    painel: yup.string().oneOf(pautas, "Escolha um painel para realizar a pesquisa: Minha pauta, Processos arquivados, Pendentes de manifestação, Acervo Geral").required("Painel inválido")
+});
+
 

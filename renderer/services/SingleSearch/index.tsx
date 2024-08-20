@@ -39,6 +39,17 @@ export async function handleSubmitSingleSearch({ singleSearchData }: HandleSubmi
         }
     }
 
+    console.log('date')
+    console.log(date)
+    console.log('date.initial')
+    console.log(date.initial)
+    console.log('date.final')
+    console.log(date.final)
+
+    while(1>0) {
+
+    }
+
     try {
 
         await trtSchema.validate({

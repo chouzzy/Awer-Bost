@@ -28,10 +28,6 @@ import { StartButtonSingleSearch } from '../components/HomeButtons/StartButtonSi
 import { handleSubmitSingleSearch } from '../services/SingleSearch';
 
 
-
-
-
-
 export default function HomePage() {
 
   useEffect(() => {
@@ -177,7 +173,12 @@ export default function HomePage() {
                           <>
                             {
                               multiOperation ?
-                                <ImportOperation setFilePath={setFilePath} />
+                                <ImportOperation
+                                  filePath={filePath}
+                                  setFilePath={setFilePath}
+                                  painel={painel}
+                                  setWarningAlert={setWarningAlert}
+                                />
                                 :
                                 <>
                                   <LoginInput setUsername={setUsername} />

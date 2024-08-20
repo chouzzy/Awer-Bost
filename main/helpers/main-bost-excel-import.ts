@@ -9,9 +9,53 @@ import { credentials, PuppeteerResult, ScrapeData } from './generalTypes';
 import { excelDataIdentified } from './audiencias';
 import { scrapeArquivados } from './scrape/processosArquivados/scrapeArquivados';
 
-export default async function MainBost(mainWindow: Electron.CrossProcessExports.BrowserWindow, scrapeData: ScrapeData) {
+export default async function MainBostExcel(mainWindow: Electron.CrossProcessExports.BrowserWindow, excelPath:string, operationType:string) {
 
-    const { username, password, trt, painel, date } = scrapeData
+    console.log(excelPath)
+    console.log('excelPath')
+    console.log(operationType)
+    console.log('operationType')
+
+    
+
+    const workbook = new exceljs.Workbook();
+    await workbook.xlsx.readFile(excelPath);
+
+    const worksheet = workbook.worksheets[0]
+
+    worksheet.eachRow(function (row, rowNumber) {
+
+        let trt:string
+        let initialDate:string
+        let finalDate:string
+        let username:credentials["user"]
+        let password:credentials["password"]
+
+        if (rowNumber > 1) {
+
+            
+            trt = (JSON.stringify(row.values[1])).replace(/"/g, ''),
+            initialDate = (JSON.stringify(row.values[2])).replace(/"/g, ''),
+            finalDate = (JSON.stringify(row.values[3])).replace(/"/g, ''),
+            username = (JSON.stringify(row.values[4])).replace(/"/g, ''),
+            password = (JSON.stringify(row.values[5])).replace(/"/g, ''),
+
+            console.log(initialDate)
+
+
+            // jsonNCMs.push({
+
+            //     ncmNumber:(JSON.stringify(row.values[1])).replace(/"/g, ''),
+            //     estadoOrigem:origem,
+            //     estadoDestino:destino
+            // })
+
+        }
+    });
+
+    while (1 < 0) {
+
+    }
 
     const trtSubmitted: number = trtDict[trt]
 
@@ -103,7 +147,7 @@ export default async function MainBost(mainWindow: Electron.CrossProcessExports.
             listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
 
             mainWindow.webContents.send('is-loading', false)
-
+            
             mainWindow.webContents.send('process-finished', true)
 
 

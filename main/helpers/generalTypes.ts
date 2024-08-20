@@ -38,5 +38,9 @@ export interface audistProps {
   };
   tipo: { descricao: string; }
 }
+export interface importDataProps {
+  excelPath: string
+  operationType: string
+}
 
 export type PuppeteerCallback = (headless: boolean) => Promise<PuppeteerResult>

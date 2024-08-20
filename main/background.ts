@@ -7,7 +7,8 @@ import PCR from "puppeteer-chromium-resolver";
 // import MainBost from './helpers/main-bost';
 import exceljs from 'exceljs'
 import MainBost from './helpers/main-bost';
-import { dateSelected, ScrapeData } from './helpers/generalTypes';
+import { dateSelected, importDataProps, ScrapeData } from './helpers/generalTypes';
+import MainBostExcel from './helpers/main-bost-excel-import';
 
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -22,17 +23,17 @@ if (isProd) {
   await app.whenReady()
 
   const mainWindow = createWindow('main', {
-    icon:'./app/images/logos/boTRT-icon.ico',
+    icon: './app/images/logos/boTRT-icon.ico',
     // fullscreen:true,
-    minimizable:true,
-    resizable:true,
-    useContentSize:true,
-    closable:true,
-    simpleFullscreen:true,
+    minimizable: true,
+    resizable: true,
+    useContentSize: true,
+    closable: true,
+    simpleFullscreen: true,
     // autoHideMenuBar:true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      devTools:true
+      devTools: true
     },
   })
 
@@ -53,8 +54,8 @@ if (isProd) {
       ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
         console.log('Dados recebidos do processo renderizador:', scrapeData);
         mainWindow.webContents.send('is-loading', true)
-        await MainBost(scrapeData, mainWindow)
-  
+        await MainBost(mainWindow, scrapeData)
+
       });
       // ... continue com o código que utiliza o navegador ...
     } catch (error) {
@@ -73,11 +74,18 @@ if (isProd) {
     await mainWindow.loadURL(`http://localhost:${port}/home`)
     // mainWindow.webContents.openDevTools()
 
+    ipcMain.on('send-excel-path', async (event, importData:importDataProps) => {
+      mainWindow.webContents.send('is-loading', true)
+
+      const {excelPath, operationType} = importData
+      await MainBostExcel(mainWindow, excelPath, operationType)
+    });
+
 
     ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
       console.log('Dados recebidos do processo renderizador:', scrapeData);
       mainWindow.webContents.send('is-loading', true)
-      await MainBost(scrapeData, mainWindow)
+      await MainBost(mainWindow, scrapeData)
 
     });
   }

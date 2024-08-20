@@ -1,16 +1,65 @@
 import { AttachmentIcon, DownloadIcon } from "@chakra-ui/icons";
 import { Button, Flex, Input, Text } from "@chakra-ui/react";
 import { MicrosoftExcelLogo } from "@phosphor-icons/react";
+import { useEffect } from "react";
+import { trtSchemaImportOperation } from "../Validation/FormValidator";
+import { ValidationError } from "yup";
 
 interface ImportOperation {
-    setFilePath:React.Dispatch<React.SetStateAction<string|null>>
+    setFilePath: React.Dispatch<React.SetStateAction<string | null>>
+    filePath: string
+    painel: string
+    setWarningAlert: React.Dispatch<React.SetStateAction<string | null>>
 }
 
-export function ImportOperation({setFilePath}:ImportOperation) {
+export function ImportOperation({ setFilePath, filePath, painel, setWarningAlert }: ImportOperation) {
+
+
 
     async function handleFileChange(event) {
-        setFilePath(event.target.files[0])
+
+
+        setFilePath(event.target.files[0].path)
+        console.log('event.target.files[0]')
+        console.log(event.target.files[0].path)
+
+
+
     }
+
+    async function startImportOperation() {
+
+        try {
+
+            await trtSchemaImportOperation.validate({
+                filePath,
+                painel
+            })
+        } catch (error) {
+
+            if (error instanceof ValidationError) {
+                setWarningAlert(String(error.errors))
+            }
+            return
+        }
+
+
+
+        console.log('filePath')
+        console.log(filePath)
+        console.log('painel')
+        console.log(painel)
+        await window.ipc.sendExcelPath({ excelPath: filePath, operationType: painel })
+    }
+
+
+
+    // useEffect(() => {
+
+    //     console.log('filePath')
+    //     console.log(filePath)
+
+    // }, [filePath])
 
 
     return (
@@ -21,7 +70,7 @@ export function ImportOperation({setFilePath}:ImportOperation) {
                 <Flex flexDir={'column'} gap={2}>
                     <Text>Para executar a operação, baixe a planilha modelo no botão abaixo:</Text>
                     <Button
-                        onClick={handleFileChange}
+                        // onClick={handleFileChange}
                         bgColor={'#FF5F5E'}
                         color={'white'}
                         _hover={'#33c481'}
@@ -42,7 +91,7 @@ export function ImportOperation({setFilePath}:ImportOperation) {
             <Flex alignItems={'center'} justifyContent={'center'}>
                 <Input
                     id='fileInput'
-                    type='file' 
+                    type='file'
                     accept='xlsx'
                     bgColor={'#21a366'}
                     color={'white'}
@@ -52,23 +101,18 @@ export function ImportOperation({setFilePath}:ImportOperation) {
                     py={1}
                     cursor={'pointer'}
                 />
-                {/* <Button
+                <Button
                     w='100%'
-                    onClick={handleFileChange}
+                    onClick={startImportOperation}
                     bgColor={'#21a366'}
                     color={'white'}
                     _hover={'#33c481'}
                 >
                     <Flex gap={4} alignItems={'center'}>
-                        <Text>Importar planilha</Text>
-                        <Flex gap={1} alignItems={'center'} >
-
-                            <AttachmentIcon _hover={{ bgColor: '#21a366', transition: '300ms' }} fontSize={'1.25rem'} />
-                            <MicrosoftExcelLogo weight="bold" fontSize={'1.5rem'} />
-                        </Flex>
+                        Start
 
                     </Flex>
-                </Button> */}
+                </Button>
             </Flex>
         </Flex>
     )
