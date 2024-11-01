@@ -1,4 +1,4 @@
-import { dateSelected, ScrapeData } from "../generalTypes";
+import { dateSelected, ScrapeData } from "../types/generalTypes";
 
 // OPÇÕES:
 // Minha pauta
@@ -74,9 +74,10 @@ async function getArquivadosApiId(grau:string, trtDicted: number) {
 
 
 
-export async function scrapeURL(painel: ScrapeData['painel'], dateSelected: dateSelected, trt: number, itensPerPage = 15, grau:string) {
+export async function scrapeURL(painel: ScrapeData['painel'],  trt: number, itensPerPage = 1000, grau:string, dateSelected?: dateSelected, processosArquivadosID?:string) {
 
-    const trtID = await getArquivadosApiId(grau, trt)
+    // const trtID = await getArquivadosApiId(grau, trt)
+    const trtID = processosArquivadosID
 
     switch (painel) {
         case 'Minha pauta':
@@ -93,3 +94,12 @@ export async function scrapeURL(painel: ScrapeData['painel'], dateSelected: date
     }
 
 }
+// export async function manageURL(url: string) {
+
+
+//             return `https://pje.trt${trt}.jus.br/pje-comum-api/api/paineladvogado/${trtID}/processos?pagina=1&tamanhoPagina=${itensPerPage}&tipoPainelAdvogado=5&ordenacaoCrescente=false`
+
+
+   
+
+// }

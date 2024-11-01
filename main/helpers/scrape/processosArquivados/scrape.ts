@@ -1,7 +1,7 @@
 import { unescape } from "he";
-import { AudienciaSimplificada, excelDataIdentified } from "../../audiencias";
-import { PuppeteerCallback, ScrapeData, credentials, dateSelected } from "../../generalTypes";
-import { navTimeout } from "../../timeout";
+import { AudienciaSimplificada, excelDataIdentified } from "../../types/audiencias";
+import { PuppeteerCallback, ScrapeData, credentials, dateSelected } from "../../types/generalTypes";
+import { navTimeout } from "../../puppeteer/timeout";
 import { scrapeURL } from "../scrapeURL";
 
 async function scrapeTRT(painel: ScrapeData["painel"], dateSelected: dateSelected, credentials: credentials, grau: string, trt: string, startPuppeteer: PuppeteerCallback) {

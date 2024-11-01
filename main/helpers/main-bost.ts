@@ -1,13 +1,12 @@
 import { dialog, ipcMain } from 'electron';
 
-import exceljs from 'exceljs'
-import PCR from "puppeteer-chromium-resolver";
-import { trtDict } from './trtDict';
-import { writeData } from './writeData';
+import { trtDict } from './converters/trtDict';
+import { writeData } from './export/writeData';
 import { scrapeMinhaPauta } from './scrape/minhaPauta/scrapeMinhaPauta';
-import { credentials, PuppeteerResult, ScrapeData } from './generalTypes';
-import { excelDataIdentified } from './audiencias';
+import { credentials, ScrapeData } from './types/generalTypes';
+import { apiResponseArquivadosProps, excelDataIdentified } from './types/audiencias';
 import { scrapeArquivados } from './scrape/processosArquivados/scrapeArquivados';
+import { startPuppeteer } from './puppeteer/puppeteerHelpers';
 
 export default async function MainBost(mainWindow: Electron.CrossProcessExports.BrowserWindow, scrapeData: ScrapeData) {
 
@@ -22,134 +21,86 @@ export default async function MainBost(mainWindow: Electron.CrossProcessExports.
         // Bqq188332@
     }
 
-    async function timeoutDelay(seconds: number) {
-        setTimeout(async () => {
-
-            return true
-        }, seconds * 1000)
-
-        return true
-    }
-
-    async function acceptCookies(page) {
-        const acceptCookieButton = '#onetrust-reject-all-handler';
-        await page.waitForSelector(acceptCookieButton);
-        await page.click(acceptCookieButton);
-        await timeoutDelay(3);
-    }
-
-    async function searchInput(page, inputText) {
-        const inputSearch = 'input#txtBusca';
-        await page.waitForSelector(inputSearch);
-        await page.type(inputSearch, inputText);
-        await timeoutDelay(2);
-    }
-
-    async function closeBrowser(browser) {
-        try {
-            await browser.close();
-        } catch (error) {
-        }
-    }
-
-    async function getExcelNCMs(worksheet: exceljs.Worksheet) {
-
-        // LER OS NCMS DA PLANILHA E RETORNAR NO ARRAY
-        const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
-
-        worksheet.eachRow(function (row, rowNumber) {
-
-            if (rowNumber > 1) {
-                jsonNCMs.push(JSON.stringify(row.values[1]))
-
-            }
-        });
-
-        // Retornar o JSON
-        return jsonNCMs;
-    }
-
-    async function startPuppeteer(headless: boolean): Promise<PuppeteerResult> {
 
 
-        const options = {};
-        const stats = await PCR(options);
-
-        const browser = await stats.puppeteer.launch({
-            headless: headless,
-            args: [
-                "--no-sandbox",
-                '--disable-web-security',
-            ],
-            executablePath: stats.executablePath
-        }).catch(function (error) {
-        });
-
-        const page = await browser.newPage();
-        await page.setViewport({
-            width: 1280,
-            height: 720,
-        });
-        await page.setBypassCSP(true)
-
-        return { page, browser }
-    }
-
-    let listOfExcelData: excelDataIdentified[]
 
     switch (painel) {
         case "Minha pauta":
 
-            listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
-
-            mainWindow.webContents.send('is-loading', false)
-
-            mainWindow.webContents.send('process-finished', true)
+            let listOfExcelData: excelDataIdentified[]
+            try {
 
 
-            ipcMain.on('save-excel', async (event) => {
+                listOfExcelData = []
 
-                const { canceled, filePaths } = await dialog.showOpenDialog({
-                    properties: ['openDirectory']
+                listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, trtSubmitted, startPuppeteer, mainWindow)
+
+
+
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+                mainWindow.webContents.send('processos-encontrados', '1');
+                // mainWindow.webContents.send('processos-encontrados', Number(listOfExcelData[0].excelData.length + listOfExcelData[1].excelData.length));
+
+                ipcMain.on('save-excel', async (event) => {
+
+                    const { canceled, filePaths } = await dialog.showOpenDialog({
+                        properties: ['openDirectory']
+                    })
+
+                    if (!canceled) {
+
+                        await writeData(listOfExcelData, filePaths, painel)
+                    }
+
                 })
 
-                if (!canceled) {
-
-                    await writeData(listOfExcelData, filePaths, painel)
-                }
-
-            })
+            } catch (error) {
+                throw error
+            }
 
             break;
 
         case 'Processos arquivados':
 
-            listOfExcelData = await scrapeArquivados(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
+            try {
 
-            mainWindow.webContents.send('is-loading', false)
+                let listOfExcelData: apiResponseArquivadosProps[]
 
-            mainWindow.webContents.send('process-finished', true)
+                listOfExcelData = []
 
-            ipcMain.on('save-excel', async (event) => {
+                listOfExcelData = await scrapeArquivados(painel, credentials, trtSubmitted, startPuppeteer, mainWindow)
 
-                const { canceled, filePaths } = await dialog.showOpenDialog({
-                    properties: ['openDirectory']
+
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+                mainWindow.webContents.send('processos-encontrados', '1')
+                // mainWindow.webContents.send('processos-encontrados', Number(listOfExcelData[0].excelData.length + listOfExcelData[1].excelData.length))
+
+                ipcMain.on('save-excel', async (event) => {
+
+                    const { canceled, filePaths } = await dialog.showOpenDialog({
+                        properties: ['openDirectory']
+                    })
+
+                    if (!canceled) {
+
+                        await writeData(listOfExcelData, filePaths, painel)
+                    }
+
                 })
 
-                if (!canceled) {
-
-                    await writeData(listOfExcelData, filePaths, painel)
-                }
-
-            })
+            } catch (error) {
+                throw error
+            }
 
         default:
             break;
     }
-
-
-
-
 }
 
 
@@ -189,4 +140,16 @@ export default async function MainBost(mainWindow: Electron.CrossProcessExports.
 //     if (json.excelData[0].numeroProcesso === 'erro') {
 //         loginErrors.push(trt)
 //     }
+// // } async function acceptCookies(page) {
+//     const acceptCookieButton = '#onetrust-reject-all-handler';
+//     await page.waitForSelector(acceptCookieButton);
+//     await page.click(acceptCookieButton);
+//     await timeoutDelay(3);
+// }
+
+// async function searchInput(page, inputText) {
+//     const inputSearch = 'input#txtBusca';
+//     await page.waitForSelector(inputSearch);
+//     await page.type(inputSearch, inputText);
+//     await timeoutDelay(2);
 // }

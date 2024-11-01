@@ -28,7 +28,7 @@ export function StartButtonSingleSearch(singleSearchData: SingleSearchProps) {
             _hover={{ color: 'gray.200', transition: '500ms', textDecor: 'none' }
             }
         >
-            Clique para iniciar
+            Clique para iniciar a single search
         </Button>
     )
 }

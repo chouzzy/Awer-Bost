@@ -1,4 +1,4 @@
-import { ScrapeData } from "../../../../main/helpers/generalTypes"
+import { ScrapeData } from "../../../../main/helpers/types/generalTypes"
 
 
 export function TRTProcessosArquivados() {
@@ -32,18 +32,30 @@ export function TRTProcessosArquivados() {
     ]
     const trtsArquivados = [
         'Selecione',
-        "TRT-1",
-        "TRT-2",
-        "TRT-3",
-        "TRT-4",
-        "TRT-5",
-        "TRT-9",
-        "TRT-10",
-        "TRT-15",
-        "TRT-16",
-        "TRT-17",
-        "TRT-23",
-        "TRT-24"
+        'TRT-1',
+        'TRT-2',
+        'TRT-3',
+        'TRT-4',
+        'TRT-5',
+        'TRT-6',
+        'TRT-7',
+        'TRT-8',
+        'TRT-9',
+        'TRT-10',
+        'TRT-11',
+        'TRT-12',
+        'TRT-13',
+        'TRT-14',
+        'TRT-15',
+        'TRT-16',
+        'TRT-17',
+        'TRT-18',
+        'TRT-19',
+        'TRT-20',
+        'TRT-21',
+        'TRT-22',
+        'TRT-23',
+        'TRT-24',
     ]
 
 

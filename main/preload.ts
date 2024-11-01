@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
-import { dateSelected, importDataProps, ScrapeData } from './helpers/generalTypes'
+import { dateSelected, importDataProps, ScrapeData } from './helpers/types/generalTypes'
 
 const handler = {
   send(channel: string, value: unknown) {
@@ -26,17 +26,24 @@ const handler = {
   callFront: (callback) => ipcRenderer.on('call-front', (_event, value) => callback(value)),
 
   isLoading: (callback) => ipcRenderer.on('is-loading', (_event, value) => callback(value)),
-
+  
   loginError: (callback) => ipcRenderer.on('login-error', (_event, value) => callback(value)),
-
+  
   scrapeData: (scrapeData: ScrapeData) => ipcRenderer.send('scrape-data', scrapeData),
-
+  
   saveExcel: async () => ipcRenderer.send('save-excel'),
-
+  
   processFinished: (callback) => ipcRenderer.on('process-finished', (_event, value) => callback(value)),
+  
+  sendExcelPath: async ({ excelPath, operationType }: importDataProps) => ipcRenderer.send('send-excel-path', { excelPath, operationType }),
+  
+  progressPercentual: (callback) => ipcRenderer.on('progress-percentual', (_event, value) => callback(value)),
 
-  sendExcelPath: async ({ excelPath, operationType }: importDataProps) => ipcRenderer.send('send-excel-path', { excelPath, operationType })
+  processosEncontrados: (callback) => ipcRenderer.on('processos-encontrados', (_event, value) => callback(value)),
 
+  invalidExcelFormat: (callback) => ipcRenderer.on('invalid-excel-format', (_event, value) => callback(value)),
+
+  progressMessagesDetails: (callback) => ipcRenderer.on('progress-messages', (_event, value) => callback(value)),
 }
 
 contextBridge.exposeInMainWorld('ipc', handler)

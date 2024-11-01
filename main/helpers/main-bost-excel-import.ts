@@ -1,191 +1,327 @@
 import { dialog, ipcMain } from 'electron';
 
 import exceljs from 'exceljs'
-import PCR from "puppeteer-chromium-resolver";
-import { trtDict } from './trtDict';
-import { writeData } from './writeData';
+import { trtDict } from './converters/trtDict';
 import { scrapeMinhaPauta } from './scrape/minhaPauta/scrapeMinhaPauta';
-import { credentials, PuppeteerResult, ScrapeData } from './generalTypes';
-import { excelDataIdentified } from './audiencias';
+import { processosArquivadosExcelList, scrapeDataListProps } from './types/generalTypes';
 import { scrapeArquivados } from './scrape/processosArquivados/scrapeArquivados';
+import { startPuppeteer } from './puppeteer/puppeteerHelpers';
+import { writeMassiveData } from './export/writeMassiveData';
+import { date } from 'yup';
+import { apiResponseArquivadosProps } from './types/audiencias';
 
-export default async function MainBostExcel(mainWindow: Electron.CrossProcessExports.BrowserWindow, excelPath:string, operationType:string) {
-
-    console.log(excelPath)
-    console.log('excelPath')
-    console.log(operationType)
-    console.log('operationType')
-
-    
+export default async function MainBostExcel(mainWindow: Electron.CrossProcessExports.BrowserWindow, excelPath: string, operationType: string) {
 
     const workbook = new exceljs.Workbook();
     await workbook.xlsx.readFile(excelPath);
 
     const worksheet = workbook.worksheets[0]
 
-    worksheet.eachRow(function (row, rowNumber) {
-
-        let trt:string
-        let initialDate:string
-        let finalDate:string
-        let username:credentials["user"]
-        let password:credentials["password"]
-
-        if (rowNumber > 1) {
-
-            
-            trt = (JSON.stringify(row.values[1])).replace(/"/g, ''),
-            initialDate = (JSON.stringify(row.values[2])).replace(/"/g, ''),
-            finalDate = (JSON.stringify(row.values[3])).replace(/"/g, ''),
-            username = (JSON.stringify(row.values[4])).replace(/"/g, ''),
-            password = (JSON.stringify(row.values[5])).replace(/"/g, ''),
-
-            console.log(initialDate)
+    // 15992496858
+    // Bqq188332@
 
 
-            // jsonNCMs.push({
 
-            //     ncmNumber:(JSON.stringify(row.values[1])).replace(/"/g, ''),
-            //     estadoOrigem:origem,
-            //     estadoDestino:destino
-            // })
+    switch (operationType) {
 
-        }
-    });
-
-    while (1 < 0) {
-
-    }
-
-    const trtSubmitted: number = trtDict[trt]
-
-    const credentials: credentials = {
-        user: username,
-        password: password
-        // 15992496858
-        // Bqq188332@
-    }
-
-    async function timeoutDelay(seconds: number) {
-        setTimeout(async () => {
-
-            return true
-        }, seconds * 1000)
-
-        return true
-    }
-
-    async function acceptCookies(page) {
-        const acceptCookieButton = '#onetrust-reject-all-handler';
-        await page.waitForSelector(acceptCookieButton);
-        await page.click(acceptCookieButton);
-        await timeoutDelay(3);
-    }
-
-    async function searchInput(page, inputText) {
-        const inputSearch = 'input#txtBusca';
-        await page.waitForSelector(inputSearch);
-        await page.type(inputSearch, inputText);
-        await timeoutDelay(2);
-    }
-
-    async function closeBrowser(browser) {
-        try {
-            await browser.close();
-        } catch (error) {
-        }
-    }
-
-    async function getExcelNCMs(worksheet: exceljs.Worksheet) {
-
-        // LER OS NCMS DA PLANILHA E RETORNAR NO ARRAY
-        const jsonNCMs: exceljs.CellValue[] | { [key: string]: exceljs.CellValue; } = []
-
-        worksheet.eachRow(function (row, rowNumber) {
-
-            if (rowNumber > 1) {
-                jsonNCMs.push(JSON.stringify(row.values[1]))
-
-            }
-        });
-
-        // Retornar o JSON
-        return jsonNCMs;
-    }
-
-    async function startPuppeteer(headless: boolean): Promise<PuppeteerResult> {
-
-
-        const options = {};
-        const stats = await PCR(options);
-
-        const browser = await stats.puppeteer.launch({
-            headless: headless,
-            args: [
-                "--no-sandbox",
-                '--disable-web-security',
-            ],
-            executablePath: stats.executablePath
-        }).catch(function (error) {
-        });
-
-        const page = await browser.newPage();
-        await page.setViewport({
-            width: 1280,
-            height: 720,
-        });
-        await page.setBypassCSP(true)
-
-        return { page, browser }
-    }
-
-    let listOfExcelData: excelDataIdentified[]
-
-    switch (painel) {
         case "Minha pauta":
 
-            listOfExcelData = await scrapeMinhaPauta(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
+            try {
+                let scrapedData: any
+                
+                scrapedData = []
 
-            mainWindow.webContents.send('is-loading', false)
-            
-            mainWindow.webContents.send('process-finished', true)
+                let scrapeDataList: scrapeDataListProps[] = []
 
+                // Verificar se as colunas têm os cabeçalhos corretos (ajuste os nomes conforme necessário)
+                const expectedHeadersMinhaPauta = ['Selecione o TRT', 'Data inicial', 'Data final', 'Usuário', 'Senha'];
 
-            ipcMain.on('save-excel', async (event) => {
+                if (
+                    worksheet.getCell('A1').value == expectedHeadersMinhaPauta[0] &&
+                    worksheet.getCell('B1').value == expectedHeadersMinhaPauta[1] &&
+                    worksheet.getCell('C1').value == expectedHeadersMinhaPauta[2] &&
+                    worksheet.getCell('D1').value == expectedHeadersMinhaPauta[3] &&
+                    worksheet.getCell('E1').value == expectedHeadersMinhaPauta[4]
 
-                const { canceled, filePaths } = await dialog.showOpenDialog({
-                    properties: ['openDirectory']
-                })
+                ) { console.log('cabeçalhos ok MP') }
+                else {
 
-                if (!canceled) {
+                    console.log('cabeçalhos errados MP')
+                    mainWindow.webContents.send('is-loading', false)
 
-                    await writeData(listOfExcelData, filePaths, painel)
+                    mainWindow.webContents.send('process-finished', true)
+                    mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_7: Existe um problema com a planilha, verifique os cabeçalhos e tente novamente. Se o problema persistir, faça o download novamente da planilha modelo.');
+                    return;
                 }
 
-            })
+                await worksheet.eachRow(async function (row, rowNumber) {
+
+                    let trt: scrapeDataListProps["trt"]
+
+                    // vinda do excel
+                    let initialDate: string
+                    // vinda do excel
+                    let finalDate: string
+
+                    let username: scrapeDataListProps["username"]
+                    let password: scrapeDataListProps["password"]
+                    let date: scrapeDataListProps["date"]
+
+                    if (rowNumber > 1) {
+
+                        trt = (JSON.stringify(row.values[1])).replace(/"/g, ''),
+                            initialDate = new Date(row.values[2]).toLocaleString('en-US', { timeZone: 'UTC' });
+                        finalDate = new Date(row.values[3]).toLocaleString('en-US', { timeZone: 'UTC' });
+                        username = (JSON.stringify(row.values[4])).replace(/"/g, ''),
+                            password = (JSON.stringify(row.values[5])).replace(/"/g, ''),
+
+
+
+                            date = {
+                                initial: {
+                                    day: new Date(initialDate).getDate().toString().padStart(2, '0'),
+                                    month: (new Date(initialDate).getMonth() + 1).toString().padStart(2, '0'),
+                                    year: new Date(initialDate).getFullYear().toString(),
+                                },
+                                final: {
+                                    day: new Date(finalDate).getDate().toString().padStart(2, '0'),
+                                    month: (new Date(finalDate).getMonth() + 1).toString().padStart(2, '0'),
+                                    year: new Date(finalDate).getFullYear().toString(),
+                                }
+                            }
+
+
+                        scrapeDataList.push({
+                            trt,
+                            trtNumber: trtDict[trt],
+                            username,
+                            password,
+                            date
+                        })
+
+                    }
+                });
+
+
+                try {
+                    scrapedData = [];
+                    let processedData = [];
+
+                    const totalItems = scrapeDataList.length;
+                    let processedItems = 0;
+
+                    for (const scrapeData of scrapeDataList) {
+
+                        const { trtNumber, date, username, password } = scrapeData;
+                        processedData = await scrapeMinhaPauta(
+                            operationType,
+                            date,
+                            { user: username, password },
+                            trtNumber,
+                            startPuppeteer,
+                            mainWindow
+                        );
+                        scrapedData.push(processedData);
+
+                        processedItems++;
+                        const progress = Math.round((processedItems / totalItems) * 100);
+
+                        mainWindow.webContents.send('progress-percentual', `${progress}`);
+                    }
+
+                } catch (error) {
+
+                    mainWindow.webContents.send('is-loading', false)
+
+                    mainWindow.webContents.send('process-finished', true)
+
+                    mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_5: Houve um erro inesperado. Por favor, tente novamente. Caso o problema persista, entre em contato com o desenvolvedor.');
+
+                }
+
+                const totalElements = scrapedData.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.length;
+                }, 0);
+
+
+                mainWindow.webContents.send('processos-encontrados', Number(totalElements));
+
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+                ipcMain.on('save-excel', async (event) => {
+
+                    const { canceled, filePaths } = await dialog.showOpenDialog({
+                        properties: ['openDirectory']
+                    })
+
+                    if (!canceled) {
+                        await writeMassiveData(scrapedData, filePaths, operationType)
+                    }
+
+                })
+
+            } catch (error) {
+
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+                mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_4:Houve um erro inesperado. Por favor, tente novamente. Caso o problema persista, entre em contato com o desenvolvedor.');
+
+                return
+            }
 
             break;
 
         case 'Processos arquivados':
 
-            listOfExcelData = await scrapeArquivados(painel, date, credentials, 'primeirograu', trtSubmitted, startPuppeteer, mainWindow)
+            try {
 
-            mainWindow.webContents.send('is-loading', false)
+                let scrapedData: apiResponseArquivadosProps[][]
 
-            mainWindow.webContents.send('process-finished', true)
+                scrapedData = []
 
-            ipcMain.on('save-excel', async (event) => {
+                let processosArquivadosExcelList: processosArquivadosExcelList[] = []
 
-                const { canceled, filePaths } = await dialog.showOpenDialog({
-                    properties: ['openDirectory']
-                })
+                // Verificar se as colunas têm os cabeçalhos corretos (ajuste os nomes conforme necessário)
+                const expectedHeadersProcessosArquivados = ['Selecione o TRT', 'Data inicial', 'Data final', 'Usuário', 'Senha'];
+                if (
+                    worksheet.getCell('A1').value == expectedHeadersProcessosArquivados[0] &&
+                    worksheet.getCell('B1').value == expectedHeadersProcessosArquivados[1] &&
+                    worksheet.getCell('C1').value == expectedHeadersProcessosArquivados[2] &&
+                    worksheet.getCell('D1').value == expectedHeadersProcessosArquivados[3] &&
+                    worksheet.getCell('E1').value == expectedHeadersProcessosArquivados[4]
 
-                if (!canceled) {
+                ) { console.log('cabeçalhos ok MP') }
+                else {
 
-                    await writeData(listOfExcelData, filePaths, painel)
+                    console.log('cabeçalhos errados MP')
+                    mainWindow.webContents.send('is-loading', false)
+
+                    mainWindow.webContents.send('process-finished', true)
+                    mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_1: Existe um problema com a planilha, verifique os cabeçalhos e tente novamente. Se o problema persistir, faça o download novamente da planilha modelo.');
+                    return;
                 }
 
-            })
+                await worksheet.eachRow(async function (row, rowNumber) {
+
+                    let trt: processosArquivadosExcelList["trt"]
+                    // vinda do excel
+                    let initialDate: string
+                    // vinda do excel
+                    let finalDate: string
+                    let username: processosArquivadosExcelList["username"]
+                    let password: processosArquivadosExcelList["password"]
+                    let date: processosArquivadosExcelList["date"]
+
+                    if (rowNumber > 1) {
+
+                        trt = (JSON.stringify(row.values[1])).replace(/"/g, ''),
+                            initialDate = new Date(row.values[2]).toLocaleString('en-US', { timeZone: 'UTC' });
+                        finalDate = new Date(row.values[3]).toLocaleString('en-US', { timeZone: 'UTC' });
+                        username = (JSON.stringify(row.values[4])).replace(/"/g, ''),
+                            password = (JSON.stringify(row.values[5])).replace(/"/g, ''),
+
+                            date = {
+                                initial: {
+                                    day: new Date(initialDate).getDate().toString().padStart(2, '0'),
+                                    month: (new Date(initialDate).getMonth() + 1).toString().padStart(2, '0'),
+                                    year: new Date(initialDate).getFullYear().toString(),
+                                },
+                                final: {
+                                    day: new Date(finalDate).getDate().toString().padStart(2, '0'),
+                                    month: (new Date(finalDate).getMonth() + 1).toString().padStart(2, '0'),
+                                    year: new Date(finalDate).getFullYear().toString(),
+                                }
+                            }
+
+                        processosArquivadosExcelList.push({
+                            trt,
+                            trtNumber: trtDict[trt],
+                            username,
+                            password,
+                            date
+                        })
+
+                    }
+                });
+
+                try {
+                    let processedData: apiResponseArquivadosProps[]
+
+                    const totalItems = processosArquivadosExcelList.length;
+                    let processedItems = 0;
+
+                    for (const processo of processosArquivadosExcelList) {
+
+                        const { trtNumber, date, username, password } = processo;
+
+                        processedData = await scrapeArquivados(
+                            operationType,
+                            { user: username, password },
+                            trtNumber,
+                            startPuppeteer,
+                            mainWindow,
+                            date,
+                        );
+
+                        scrapedData.push(processedData);
+
+                        processedItems++;
+
+                        // PROGRESSO
+                        const progress = Math.round((processedItems / totalItems) * 100);
+
+                        mainWindow.webContents.send('progress-percentual', `${progress}`);
+
+                    }
+                } catch (error) {
+
+                    mainWindow.webContents.send('is-loading', false)
+
+                    mainWindow.webContents.send('process-finished', true)
+
+                    mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_2: Houve um erro inesperado. Por favor, tente novamente. Caso o problema persista, entre em contato com o desenvolvedor.');
+
+                }
+
+                const totalElements = scrapedData.reduce((accumulator, currentValue) => {
+                    return accumulator + currentValue.length;
+                }, 0);
+
+
+                mainWindow.webContents.send('processos-encontrados', Number(totalElements));
+
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+
+
+                ipcMain.on('save-excel', async (event) => {
+
+                    const { canceled, filePaths } = await dialog.showOpenDialog({
+                        properties: ['openDirectory']
+                    })
+
+                    if (!canceled) {
+                        await writeMassiveData(scrapedData, filePaths, operationType)
+
+                    }
+
+                })
+
+            } catch (error) {
+                mainWindow.webContents.send('is-loading', false)
+
+                mainWindow.webContents.send('process-finished', true)
+
+                mainWindow.webContents.send('invalid-excel-format', 'Erro ASC_3: Houve um erro inesperado. Por favor, tente novamente. Caso o problema persista, entre em contato com o desenvolvedor.');
+
+                return
+            }
 
         default:
             break;

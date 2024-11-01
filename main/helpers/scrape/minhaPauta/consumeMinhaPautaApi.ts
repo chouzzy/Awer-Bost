@@ -1,9 +1,9 @@
-import { Browser, Page } from "puppeteer";
 import { unescape } from "he";
-import { AudienciaSimplificada, excelDataIdentified } from "../../audiencias";
-import { credentials, dateSelected, PuppeteerCallback, ScrapeData } from "../../generalTypes";
+import { AudienciaSimplificada, excelDataIdentified } from "../../types/audiencias";
+import { credentials, dateSelected, PuppeteerCallback, ScrapeData } from "../../types/generalTypes";
 import { scrapeURL } from "../scrapeURL";
 import { ApiMinhaPautaResponse } from "./apiMinhaPautaTypes";
+import { timeoutDelay } from "../../converters/timeOutDelay";
 
 
 export async function consumeMinhaPautaApi(
@@ -16,138 +16,236 @@ export async function consumeMinhaPautaApi(
     mainWindow: Electron.CrossProcessExports.BrowserWindow
 ) {
 
-    const { page, browser } = await startPuppeteer(false)
-
-    await page.goto(`https://pje.trt${trt}.jus.br/${grau}/login.seam`);
-    // await page.waitForNavigation({timeout:2000})
-
     try {
 
-        await page.waitForSelector('#btnEntrar', { visible: true })
-    } catch (error) {
-        mainWindow.webContents.send('login-error', false)
-         return 'loginError'
-    }
 
-    // LOGIN TRT
-    const { user, password } = credentials
-
-    await page.type('#username', user);
-    await page.type('#password', password);
-
-
-    await page.click('#btnEntrar')
-
-    try {
-        await page.waitForSelector('#brasao-republica', { visible: true })
-    } catch (error) {
-        mainWindow.webContents.send('login-error', false)
-         return 'loginError'
-    }
-
-
-    try {
-
-        const url = await scrapeURL(painel, dateSelected, trt, 15, grau)
-        console.log('url')
-        console.log(url)
-
-        await page.goto(url);
+        const { page, browser } = await startPuppeteer(false)
 
         try {
-            await page.waitForSelector('pre');
+            try {
 
+                await page.goto(`https://pje.trt${trt}.jus.br/${grau}/login.seam`);
+                // await page.waitForNavigation({timeout:60000})
+            } catch (error) {
+                console.log('error')
+                console.log(error)
+            } finally {
+                console.log('oi')
+            }
+            await page.waitForSelector('#btnEntrar', { visible: true })
+
+
+            mainWindow.webContents.send(
+                'progress-messages',
+                `Buscando dados no TRT-${trt}...`
+            );
         } catch (error) {
-            console.log('erro-entrar')
-        }
 
-        const html = await page.$eval('pre', el => el.textContent);
-
-        const json: ApiMinhaPautaResponse = JSON.parse(html);
-
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        const identifier: excelDataIdentified["identifier"] = {
-            trt: `TRT-${trt}`,
-            grau: grau
-        }
-
-        // ERRO DE LOGIN
-        if (json.codigoErro == "ARQ-516") {
+            const identifier: excelDataIdentified["identifier"] = {
+                trt: `TRT-${trt}`,
+                grau: grau
+            }
 
             const loginErrorJson: excelDataIdentified = {
                 excelData: [{
                     type: 'Minha pauta',
-                    numeroProcesso: 'erro',
-                    orgaoJulgador: 'erro',
-                    tipoAudiencia: 'erro'
+                    usuario:credentials.user,
+                    numeroProcesso: 'Erro de autenticação',
+                    orgaoJulgador: 'Erro de autenticação',
+                    tipoAudiencia: 'Erro de autenticação',
+                    dataInicio: 'Erro de autenticação',
+                    dataFim: 'Erro de autenticação',
+                    poloAtivo: 'Erro de autenticação',
+                    poloPassivo: 'Erro de autenticação',
                 }],
                 identifier
             }
+
+            mainWindow.webContents.send(
+                'progress-messages',
+                `Ocorreu um erro de autenticação no TRT-${trt}, seguindo para o próximo da lista...`
+            );
+
+            await browser.close()
+
+            return loginErrorJson
+
+        }
+
+        // LOGIN TRT
+        const { user, password } = credentials
+
+        await page.type('#username', user);
+        await page.type('#password', password);
+
+
+        await page.click('#btnEntrar')
+
+        try {
+            await page.waitForSelector('#brasao-republica', { visible: true })
+        } catch (error) {
+
+
+            const identifier: excelDataIdentified["identifier"] = {
+                trt: `TRT-${trt}`,
+                grau: grau
+            }
+
+            const loginErrorJson: excelDataIdentified = {
+                excelData: [{
+                    type: 'Minha pauta',
+                    usuario:credentials.user,
+                    numeroProcesso: 'Erro de autenticação',
+                    orgaoJulgador: 'Erro de autenticação',
+                    tipoAudiencia: 'Erro de autenticação',
+                    dataInicio: 'Erro de autenticação',
+                    dataFim: 'Erro de autenticação',
+                    poloAtivo: 'Erro de autenticação',
+                    poloPassivo: 'Erro de autenticação',
+                }],
+                identifier
+            }
+
+            mainWindow.webContents.send(
+                'progress-messages',
+                `Ocorreu um erro de autenticação no TRT-${trt}, seguindo para o próximo da lista...`
+            );
+
 
             await browser.close()
 
             return loginErrorJson
         }
 
-        // EMPTY JSON
-        if (json.totalRegistros == 0) {
+
+        try {
+
+            const url = await scrapeURL(painel, trt, 1000, grau, dateSelected)
+
+
+            await page.goto(url);
+
+            try {
+                await page.waitForSelector('pre');
+
+
+            } catch (error) {
+                throw error
+            }
+
+            const html = await page.$eval('pre', el => el.textContent);
+
+            const json: ApiMinhaPautaResponse = JSON.parse(html);
+
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            const identifier: excelDataIdentified["identifier"] = {
+                trt: `TRT-${trt}`,
+                grau: grau
+            }
+
+            // ERRO DE LOGIN
+            if (json.codigoErro == "ARQ-516") {
+
+                const loginErrorJson: excelDataIdentified = {
+                    excelData: [{
+                        type: 'Minha pauta',
+                        usuario:credentials.user,
+                        numeroProcesso: 'erro',
+                        orgaoJulgador: 'erro',
+                        tipoAudiencia: 'erro',
+                        dataInicio: 'erro',
+                        dataFim: 'erro',
+                        poloAtivo: 'erro',
+                        poloPassivo: 'erro',
+                    }],
+                    identifier
+                }
+
+                await browser.close()
+
+                return loginErrorJson
+            }
+
+            // EMPTY JSON
+            if (json.totalRegistros == 0) {
+
+                const emptyJson: excelDataIdentified = {
+                    excelData: [{
+                        type: 'Minha pauta',
+                        usuario:credentials.user,
+                        numeroProcesso: '',
+                        orgaoJulgador: '',
+                        tipoAudiencia: '',
+                        dataInicio: '',
+                        dataFim: '',
+                        poloAtivo: '',
+                        poloPassivo: '',
+                    }],
+                    identifier
+                }
+
+                await browser.close()
+
+                return emptyJson
+            }
+
+            const excelData: AudienciaSimplificada[] = []; // Inicializando um array vazio
+
+            // MODELANDO JSON
+            json.resultado.forEach((audit) => {
+
+                excelData.push({
+                    type: 'Minha pauta',
+                    usuario:credentials.user,
+                    numeroProcesso: audit.processo.numero,
+                    tipoAudiencia: unescape(audit.tipo.descricao),
+                    orgaoJulgador: unescape(audit.processo.orgaoJulgador.descricao),
+                    dataInicio: audit.dataInicio,
+                    dataFim: audit.dataFim,
+                    poloAtivo: audit.poloAtivo.nome,
+                    poloPassivo: audit.poloPassivo.nome,
+                    urlAudienciaVirtual: audit.urlAudienciaVirtual
+                });
+            });
+
+            await browser.close()
+
+            const excelDataIdentified: excelDataIdentified = {
+                excelData,
+                identifier
+            }
+
+            return excelDataIdentified
+
+        } catch {
+
+            await browser.close()
+
+            const identifier: excelDataIdentified["identifier"] = {
+                trt: `TRT-${trt}`,
+                grau: grau
+            }
 
             const emptyJson: excelDataIdentified = {
                 excelData: [{
                     type: 'Minha pauta',
-                    numeroProcesso: '',
-                    orgaoJulgador: '',
-                    tipoAudiencia: ''
+                    usuario:credentials.user,
+                    numeroProcesso: 'erro',
+                    orgaoJulgador: 'erro',
+                    tipoAudiencia: 'erro',
+                    dataInicio: 'erro',
+                    dataFim: 'erro',
+                    poloAtivo: 'erro',
+                    poloPassivo: 'erro',
                 }],
                 identifier
             }
-
-            await browser.close()
-
             return emptyJson
         }
 
-        const excelData: AudienciaSimplificada[] = []; // Inicializando um array vazio
-
-        // MODELANDO JSON
-        json.resultado.forEach((audit) => {
-            excelData.push({
-                type: 'Minha pauta',
-                numeroProcesso: audit.processo.numero,
-                tipoAudiencia: unescape(audit.tipo.descricao),
-                orgaoJulgador: unescape(audit.processo.orgaoJulgador.descricao)
-            });
-        });
-
-        await browser.close()
-
-        const excelDataIdentified: excelDataIdentified = {
-            excelData,
-            identifier
-        }
-
-        return excelDataIdentified
-
-    } catch {
-
-        await browser.close()
-
-        const identifier: excelDataIdentified["identifier"] = {
-            trt: `TRT-${trt}`,
-            grau: grau
-        }
-
-        const emptyJson: excelDataIdentified = {
-            excelData: [{
-                type: 'Minha pauta',
-                numeroProcesso: 'erro',
-                orgaoJulgador: 'erro',
-                tipoAudiencia: 'erro'
-            }],
-            identifier
-        }
-        return emptyJson
+    } catch (error) {
+        throw error
     }
 
 }

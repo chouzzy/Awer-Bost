@@ -1,16 +1,32 @@
-import { WarningIcon } from "@chakra-ui/icons";
+import { CloseIcon, WarningIcon } from "@chakra-ui/icons";
 import { Flex, Text } from "@chakra-ui/react";
+import React from "react";
 
 interface warningAlertProps {
-    warningAlert:string
+    warningAlert: string
+    setWarningAlert: React.Dispatch<React.SetStateAction<string>>
 }
 
-export function WarningAlert({warningAlert}:warningAlertProps) {
+export function WarningAlert({ warningAlert, setWarningAlert }: warningAlertProps) {
 
     return (
-        <Flex mt={4} bg='#FF5F5E' borderRadius={4} color='white' p={2} alignItems={'center'} gap={4}>
-            <Flex> <WarningIcon fontSize={24} /> </Flex>
-            <Flex> <Text fontSize={'0.875rem'}> {warningAlert} </Text> </Flex>
+        <Flex position='relative' mt={4} bg='#FF5F5E' borderRadius={4} color='white' alignItems={'center'}>
+            <Flex gap={4} p={2} mr={4} minW={64}>
+                <Flex> <WarningIcon fontSize={24} /> </Flex>
+                <Flex> <Text fontSize={'0.875rem'}> {warningAlert} </Text> </Flex>
+            </Flex>
+
+            <Flex
+                onClick={() => setWarningAlert("")}
+                cursor={'pointer'}
+                _hover={{ color: 'red.700', transition: '300ms' }}
+                fontSize={'0.64rem'}
+                position={'absolute'}
+                top={1}
+                right={1}
+            >
+                <CloseIcon />
+            </Flex>
         </Flex>
     )
 }

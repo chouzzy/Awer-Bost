@@ -16,9 +16,13 @@ interface HandleSubmitSingleSearchProps {
 
 export async function handleSubmitSingleSearch({ singleSearchData }: HandleSubmitSingleSearchProps) {
 
+
     const { painel, initialDate, finalDate, setWarningAlert, username, password, trt } = singleSearchData
 
+    console.log('entramos no handle')
+
     if ((painel == "Minha pauta") && (!initialDate || !finalDate)) {
+        console.log('erro do date')
         return setWarningAlert('Insira a data inicial e a data final')
     }
 
@@ -39,25 +43,30 @@ export async function handleSubmitSingleSearch({ singleSearchData }: HandleSubmi
         }
     }
 
-    console.log('date')
-    console.log(date)
-    console.log('date.initial')
-    console.log(date.initial)
-    console.log('date.final')
-    console.log(date.final)
-
-    while(1>0) {
-
-    }
-
     try {
+        switch (painel) {
 
-        await trtSchema.validate({
-            username,
-            password,
-            trt,
-            painel
-        })
+            case 'Minha pauta':
+                await trtSchema.validate({
+                    username,
+                    password,
+                    trt,
+                    painel
+                })
+                break;
+
+            case 'Processos arquivados':
+
+                await trtSchema.validate({
+                    username,
+                    password,
+                    trt,
+                    painel
+                })
+
+                break;
+        }
+
 
     } catch (error) {
 

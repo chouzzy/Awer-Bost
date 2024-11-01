@@ -3,15 +3,17 @@ import { Button } from "@chakra-ui/react";
 interface SaveButtonProps {
     saveFilePath: () => Promise<void>
     file: boolean
+    disable: boolean
 }
 
-export function SaveButton({ file, saveFilePath }: SaveButtonProps) {
+export function SaveButton({ file, saveFilePath, disable }: SaveButtonProps) {
 
     return (
         <Button
             mx='auto'
             variant="solid"
             type='submit'
+            disabled = {disable}
             onClick={
                 file ?
                     () => { '' }

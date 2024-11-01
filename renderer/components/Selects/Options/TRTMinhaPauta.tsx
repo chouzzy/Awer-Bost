@@ -1,4 +1,4 @@
-import { ScrapeData } from "../../../../main/helpers/generalTypes"
+import { ScrapeData } from "../../../../main/helpers/types/generalTypes"
 
 
 export function TRTMinhaPauta() {

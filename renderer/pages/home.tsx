@@ -51,20 +51,47 @@ export default function HomePage() {
     })
   }, [])
 
+  useEffect(() => {
+    window.ipc.progressPercentual(async (value) => {
+      setProgressPercentual(value)
+    })
+  }, [])
+
+  useEffect(() => {
+    window.ipc.processosEncontrados(async (value) => {
+      setProcessosEncontrados(value)
+    })
+  }, [])
+
+  useEffect(() => {
+    window.ipc.invalidExcelFormat(async (value) => {
+      setWarningAlert(value)
+    })
+  }, [])
+
+  useEffect(() => {
+    window.ipc.progressMessagesDetails(async (value) => {
+      setProgressMessages(value)
+    })
+  }, [])
+
   const [file, setFile] = useState(true);
 
   const [loading, setLoading] = useState(false);
   const [processFinished, setProcessFinished] = useState(false);
+  const [progressPercentual, setProgressPercentual] = useState("0");
+  const [processosEncontrados, setProcessosEncontrados] = useState(0);
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [trt, setTRT] = useState('')
-  const [painel, setPainel] = useState('')
+  const [painel, setPainel] = useState('Selecione')
 
   const [initialDate, setInitialDate] = useState('')
   const [finalDate, setFinalDate] = useState('');
 
   const [warningAlert, setWarningAlert] = useState('');
+  const [progressMessages, setProgressMessages] = useState('');
 
   const [multiOperation, setMultiOperation] = useState(false);
 
@@ -97,7 +124,9 @@ export default function HomePage() {
 
       <Container
         minHeight="100vh"
-        bgImage={'/images/bgs/judge-bg2.png'}
+        // bgImage={'/images/bgs/judge-bg2.png'}
+        bgGradient={'linear(to-br, #FF5F5E22, #FF5F5E77)'}
+        bgColor={'black'}
         bgSize={'cover'}
         bgPos={'center'}
         bgRepeat={'no-repeat'}
@@ -111,25 +140,59 @@ export default function HomePage() {
           flexDir={'column'}
           alignItems={'center'}
           pb={8}
+          gap={8}
         >
           <Logo />
+
+          {warningAlert ?
+            <WarningAlert warningAlert={warningAlert} setWarningAlert={setWarningAlert} />
+            :
+            ''
+          }
           {
             loading ?
-              <Spinner
-                my='auto'
-                thickness='4px'
-                speed='0.65s'
-                emptyColor='gray.200'
-                color='blue.500'
-                size='xl'
-              />
+              // TELA DE LOADING
+              <Flex flexDir={'column'} alignItems={'center'} justifyContent={'center'} gap={4}>
+
+                <Spinner
+                  my='auto'
+                  thickness='4px'
+                  speed='0.65s'
+                  emptyColor='gray.200'
+                  color='blue.500'
+                  size='xl'
+                />
+
+                <Flex flexDir={'column'} gap={4} color='white' alignItems={'center'} justifyContent={'center'}>
+                  <Flex gap={2}>
+                    <Flex>
+                      Buscando dados...
+                    </Flex>
+                    <Flex>
+                      {progressPercentual}%
+                    </Flex>
+                  </Flex>
+                  <Flex>
+                    {progressMessages}
+                  </Flex>
+                </Flex>
+              </Flex>
               :
               <Flex>
 
                 {processFinished ?
-                  <Flex gap={2} >
+                  <Flex gap={8} flexDir='column' alignItems={'center'} justifyContent={'center'}>
                     <BackButton setProcessFinished={setProcessFinished} />
-                    <SaveButton file={file} saveFilePath={saveFilePath} />
+                    {processosEncontrados > 0 ?
+                    <SaveButton file={file} saveFilePath={saveFilePath} disable={processosEncontrados == 0 ? true : false} />
+                    :
+                    ""
+                    }
+                    <Flex color='white' fontWeight={'bold'}>
+                      <Flex>
+                        Um total de {processosEncontrados} TRTs retornaram dados na pesquisa.
+                      </Flex>
+                    </Flex>
                   </Flex>
                   :
 
@@ -138,11 +201,7 @@ export default function HomePage() {
                     gap={1}
                     w={'560px'}
                   >
-                    {warningAlert ?
-                      <WarningAlert warningAlert={warningAlert} />
-                      :
-                      ''
-                    }
+
 
                     {/* // INPUTS DE USO DO TRT */}
                     <Flex
@@ -179,14 +238,15 @@ export default function HomePage() {
                                   painel={painel}
                                   setWarningAlert={setWarningAlert}
                                 />
-                                :
-                                <>
-                                  <LoginInput setUsername={setUsername} />
-                                  <PasswordInput setPassword={setPassword} />
-
+                                : <>
                                   {
                                     painel != "Selecione" ?
-                                      <SelectTRT trt={trt} setTRT={setTRT} painel={painel} />
+                                      <>
+                                        <LoginInput setUsername={setUsername} />
+                                        <PasswordInput setPassword={setPassword} />
+                                        <SelectTRT trt={trt} setTRT={setTRT} painel={painel} />
+
+                                      </>
                                       :
                                       ""
                                   }
@@ -197,10 +257,6 @@ export default function HomePage() {
                           :
                           ''
                         }
-
-
-
-
 
                       </Flex>
 
@@ -215,7 +271,7 @@ export default function HomePage() {
                           isOperationSelected ?
                             <>
                               {
-                                painel == "Minha pauta" || "Processos arquivados" ?
+                                painel == "Minha pauta" ?
                                   <>
                                     {/* INPUT DATAS */}
                                     <DateInput setFinalDate={setFinalDate} setInitialDate={setInitialDate} />
@@ -226,17 +282,23 @@ export default function HomePage() {
                                       py={4}
                                       gap={4}
                                     >
-
-                                      {/* BOTÃO START */}
                                       <StartButtonSingleSearch singleSearchData={singleSearchData} />
+                                    </Flex>
+                                  </>
+                                  :
+                                  ''
+                              }
+                              {
+                                painel == "Processos arquivados" ?
+                                  <>
+                                    {/* BOTÃO START */}
+                                    <Flex
+                                      flexDir={'column'}
+                                      py={4}
+                                      gap={4}
+                                    >
 
-                                      {/* BOTÃO SAVE FILE */}
-                                      {
-                                        // loading ?
-                                        //   ''
-                                        //   :
-                                        //   <SaveButton file={file} saveFilePath={saveFilePath} />
-                                      }
+                                      <StartButtonSingleSearch singleSearchData={singleSearchData} />
                                     </Flex>
                                   </>
                                   :
@@ -250,9 +312,6 @@ export default function HomePage() {
                         }
                       </>
                     }
-
-
-
 
                   </Flex>
                 }

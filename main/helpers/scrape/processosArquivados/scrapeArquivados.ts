@@ -1,31 +1,66 @@
-import { excelDataIdentified } from "../../audiencias";
-import { PuppeteerCallback, ScrapeData, credentials, dateSelected } from "../../generalTypes";
+import { apiResponseArquivadosProps, excelDataIdentified, ProcessosArquivadosSimplificado } from "../../types/audiencias";
+import { PuppeteerCallback, ScrapeData, credentials, dateSelected, processosArquivadosExcelList } from "../../types/generalTypes";
 import { ConsumeProcessosArquivadosApi } from "./consumeProcessosArquivadosApi";
+import { filtrarPorData } from "./dateFilter";
 
-async function scrapeArquivados(painel: ScrapeData["painel"], dateSelected: dateSelected, credentials: credentials, grau: string, trt: number, startPuppeteer: PuppeteerCallback, mainWindow: Electron.CrossProcessExports.BrowserWindow) {
+async function scrapeArquivados(
+    painel: ScrapeData["painel"],
+    credentials: credentials,
+    trt: number,
+    startPuppeteer: PuppeteerCallback,
+    mainWindow: Electron.CrossProcessExports.BrowserWindow,
+    date?: processosArquivadosExcelList["date"],
+): Promise<apiResponseArquivadosProps[]> {
 
 
-    let apiResponse: excelDataIdentified | "loginError"
+    let apiResponse: apiResponseArquivadosProps | "loginError"
+
+    const listOfExcelData: apiResponseArquivadosProps[] = []
+
+    try {
 
 
-    const listOfExcelData: excelDataIdentified[] = []
-    apiResponse = await ConsumeProcessosArquivadosApi(painel, dateSelected, 'primeirograu', trt, credentials, startPuppeteer, mainWindow)
+        apiResponse = await ConsumeProcessosArquivadosApi(painel, 'primeirograu', trt, credentials, startPuppeteer, mainWindow)
 
-    if (apiResponse == "loginError") {
-        return
+        if (apiResponse.excelData[0].numeroProcesso == "Erro de autenticação") {
+            return listOfExcelData
+        }
+
+        if (date) {
+            const filterResponsePrimeiroGrau = await filtrarPorData(apiResponse, date.initial, date.final)
+            listOfExcelData.push(filterResponsePrimeiroGrau)
+        } else {
+            listOfExcelData.push(apiResponse)
+
+        }
+
+
+
+        apiResponse = await ConsumeProcessosArquivadosApi(painel, 'segundograu', trt, credentials, startPuppeteer, mainWindow)
+
+        if (apiResponse.excelData[0].numeroProcesso == "Erro de autenticação") {
+            return listOfExcelData
+        }
+
+        if (date) {
+            const filterResponseSegundoGrau = await filtrarPorData(apiResponse, date.initial, date.final)
+            listOfExcelData.push(filterResponseSegundoGrau)
+
+        } else {
+            listOfExcelData.push(apiResponse)
+        }
+
+
+
+
+
+
+        return listOfExcelData
+
+    } catch (error) {
+
+        throw error
     }
-
-    listOfExcelData.push(apiResponse)
-
-    apiResponse = await ConsumeProcessosArquivadosApi(painel, dateSelected, 'segundograu', trt, credentials, startPuppeteer, mainWindow)
-
-    if (apiResponse == "loginError") {
-        return
-    }
-
-    listOfExcelData.push(apiResponse)
-
-    return listOfExcelData
 
 }
 

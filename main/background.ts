@@ -7,7 +7,7 @@ import PCR from "puppeteer-chromium-resolver";
 // import MainBost from './helpers/main-bost';
 import exceljs from 'exceljs'
 import MainBost from './helpers/main-bost';
-import { dateSelected, importDataProps, ScrapeData } from './helpers/generalTypes';
+import { dateSelected, importDataProps, ScrapeData } from './helpers/types/generalTypes';
 import MainBostExcel from './helpers/main-bost-excel-import';
 
 
@@ -22,14 +22,17 @@ if (isProd) {
 ; (async () => {
   await app.whenReady()
 
+  // CRIAÇÃO DA JANELA PRINCIPAL
   const mainWindow = createWindow('main', {
     icon: './app/images/logos/boTRT-icon.ico',
     // fullscreen:true,
     minimizable: true,
     resizable: true,
-    useContentSize: true,
     closable: true,
     simpleFullscreen: true,
+    minHeight:920,
+    minWidth:720,
+    center:true,
     // autoHideMenuBar:true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -40,7 +43,6 @@ if (isProd) {
   const options = {};
   const stats = await PCR(options);
 
-
   // PRODUÇÃO
   if (isProd) {
 
@@ -48,8 +50,18 @@ if (isProd) {
     const homeDir = require('os').homedir()
     const desktopDir = `${homeDir}/Desktop`
 
-
     try {
+
+      ipcMain.on('send-excel-path', async (event, importData: importDataProps) => {
+
+
+        mainWindow.webContents.send('is-loading', true)
+
+        const { excelPath, operationType } = importData
+
+        await MainBostExcel(mainWindow, excelPath, operationType)
+      });
+
 
       ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
         console.log('Dados recebidos do processo renderizador:', scrapeData);
@@ -60,6 +72,14 @@ if (isProd) {
       // ... continue com o código que utiliza o navegador ...
     } catch (error) {
       // Escreve o erro na célula A1 da planilha "teste.xlsx"
+
+      mainWindow.webContents.send('is-loading', false)
+
+      mainWindow.webContents.send('process-finished', true)
+
+      mainWindow.webContents.send('invalid-excel-format', 'Ocorreu um problema. Por favor, verifique a conexão e tente novamente mais tarde.');
+
+
       const workbook = new exceljs.Workbook();
       const worksheet = workbook.addWorksheet('Planilha1');
       worksheet.getCell('A1').value = error.message;
@@ -69,25 +89,40 @@ if (isProd) {
   // DSESENVOLVIMENTO
   else {
 
-    console.log('Modo de desenvolvimento: ativado.')
-    const port = process.argv[2]
-    await mainWindow.loadURL(`http://localhost:${port}/home`)
-    // mainWindow.webContents.openDevTools()
+    try {
 
-    ipcMain.on('send-excel-path', async (event, importData:importDataProps) => {
-      mainWindow.webContents.send('is-loading', true)
+      console.log('Modo de desenvolvimento: ativado.')
+      const port = process.argv[2]
+      await mainWindow.loadURL(`http://localhost:${port}/home`)
+      // mainWindow.webContents.openDevTools()
 
-      const {excelPath, operationType} = importData
-      await MainBostExcel(mainWindow, excelPath, operationType)
-    });
+      ipcMain.on('send-excel-path', async (event, importData: importDataProps) => {
 
 
-    ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
-      console.log('Dados recebidos do processo renderizador:', scrapeData);
-      mainWindow.webContents.send('is-loading', true)
-      await MainBost(mainWindow, scrapeData)
+        mainWindow.webContents.send('is-loading', true)
 
-    });
+        const { excelPath, operationType } = importData
+
+        await MainBostExcel(mainWindow, excelPath, operationType)
+      });
+
+
+      ipcMain.on('scrape-data', async (event, scrapeData: ScrapeData) => {
+        console.log('Dados recebidos do processo renderizador:', scrapeData);
+        mainWindow.webContents.send('is-loading', true)
+        await MainBost(mainWindow, scrapeData)
+
+      });
+
+    } catch (error) {
+
+      mainWindow.webContents.send('is-loading', false)
+
+      mainWindow.webContents.send('process-finished', true)
+
+      mainWindow.webContents.send('invalid-excel-format', 'Ocorreu um problema. Por favor, verifique a conexão e tente novamente mais tarde.');
+
+    }
   }
 })()
 
